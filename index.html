@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KBO 야구 단장 시뮬레이터 v47.0</title>
+    <title>단장 멀티v1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -89,6 +89,9 @@
         tr:last-child td { border-bottom: none; }
         tr:hover { background-color: #f8fafc; }
 
+        .player-row-clickable { cursor: pointer; user-select: none; }
+        .player-row-clickable:hover { background-color: #f1f5f9 !important; }
+
         .sort-btn {
             background: none; border: none; font-weight: bold; cursor: pointer; color: var(--accent-blue); margin-left: 2px; font-size: 0.75rem;
         }
@@ -138,8 +141,18 @@
             margin-left: 4px; display: inline-block;
         }
 
+        .toxic-badge {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
         .lock-badge {
             background: #475569; color: #fff; font-weight: bold; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem; margin-left: 4px; display: inline-block;
+        }
+
+        .untradeable-badge {
+            background: #ef4444; color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem; margin-left: 4px; display: inline-block;
         }
 
         .protected-badge {
@@ -218,9 +231,22 @@
             font-weight: 800; color: var(--accent-blue); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;
         }
 
-        .season-history-card {
-            background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: var(--shadow-sm);
+        .bio-pip-window {
+            position: fixed; top: 160px; left: 100px; width: 380px; height: 480px;
+            background: #ffffff; border: 2px solid var(--accent-purple); border-radius: var(--radius-lg);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); z-index: 9995; display: flex; flex-direction: column;
+            overflow: hidden; resize: both;
         }
+
+        .bio-pip-header {
+            background: var(--accent-purple); color: #fff; padding: 8px 12px; font-size: 0.85rem; font-weight: 800;
+            display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;
+        }
+
+        .bio-card-section {
+            background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;
+        }
+        .bio-card-title { font-weight: 800; color: var(--primary); font-size: 0.8rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
 
         .cheat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; text-align: left; }
         .cheat-item-card { background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
@@ -233,7 +259,7 @@
 <!-- 시작 모달 -->
 <div id="start-modal" class="modal-overlay">
     <div class="start-modal">
-        <h2>⚾ KBO 단장 시뮬레이터 v47.0</h2>
+        <h2>⚾ 단장 멀티v1</h2>
         <p style="color:var(--text-muted); margin-bottom:14px; font-size:0.82rem;">오프라인 싱글플레이 및 최대 10인 실시간 멀티플레이 지원</p>
 
         <div class="form-group">
@@ -282,6 +308,15 @@
     </div>
 </div>
 
+<!-- 선수 약력(Bio) 모니터링 PIP 팝업 -->
+<div id="player-bio-pip" class="bio-pip-window" style="display:none;">
+    <div id="bio-pip-header" class="bio-pip-header">
+        <span id="bio-header-title">📜 선수 약력 및 통산 상세 리포트</span>
+        <button style="background:none; border:none; color:#fff; font-weight:bold; cursor:pointer;" onclick="closePlayerBioModal()">❌</button>
+    </div>
+    <div id="bio-pip-body" class="pip-body" style="background:#fff;"></div>
+</div>
+
 <!-- 치트키 모달 -->
 <div id="cheat-modal" class="modal-overlay" style="display:none;">
     <div class="start-modal" style="max-width:620px;">
@@ -319,7 +354,7 @@
             <div class="cheat-item-card">
                 <div>
                     <h4>💸 캡 패널티 0원 리셋</h4>
-                    <p>방출 및 이월로 쌓인 차기 캡 패널티(Dead Cap)를 완전히 초기화합니다.</p>
+                    <p>이월 및 초과로 쌓인 차기 캡 패널티(Dead Cap)를 완전히 초기화합니다.</p>
                 </div>
                 <button class="btn btn-info" style="width:100%; margin-top:6px;" onclick="cheatResetDeadCap()">캡 패널티 0원 초기화</button>
             </div>
@@ -350,7 +385,6 @@
         <button id="pip-tab-btn-growth" onclick="switchPipTab('growth')">📈 연도별 성장 (1·2군)</button>
     </div>
 
-    <!-- 진행 알림음 볼륨 조절 바 -->
     <div style="background:#f1f5f9; border-bottom:1px solid var(--border-color); padding:5px 10px; display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; color:var(--primary);">
         <span>🔊 <b>진행 알림음 볼륨</b></span>
         <div style="display:flex; align-items:center; gap:6px;">
@@ -361,7 +395,7 @@
 
     <div id="pip-view-status" class="pip-body">
         <div id="pip-alert-box" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:6px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">
-            📢 시즌 알림: v47.0 가동 중
+            📢 시즌 알림: 단장 멀티v1 가동 중
         </div>
 
         <div>
@@ -373,9 +407,8 @@
         </div>
 
         <div style="border-top:1px solid var(--border-color); padding-top:6px; flex:1; display:flex; flex-direction:column;">
-            <div style="font-weight:bold; color:var(--primary); margin-bottom:4px;">⚾ 구단별 1군 라인업 (괄호: 올해 변화)</div>
-            <select id="pip-team-select" style="width:100%; font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipLineup()">
-            </select>
+            <div style="font-weight:bold; color:var(--primary); margin-bottom:4px;">⚾ 구단별 1군 라인업 (더블클릭 시 약력)</div>
+            <select id="pip-team-select" style="width:100%; font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipLineup()"></select>
             <div id="pip-lineup-container" class="pip-lineup-list"></div>
         </div>
     </div>
@@ -383,8 +416,7 @@
     <div id="pip-view-growth" class="pip-body" style="display:none;">
         <div style="font-weight:bold; color:var(--primary); margin-bottom:2px;">📈 1·2군 전 선수 연도별 기량 변동 리포트</div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-            <select id="pip-growth-team-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()">
-            </select>
+            <select id="pip-growth-team-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()"></select>
             <select id="pip-growth-filter-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()">
                 <option value="ALL">전체 보기</option>
                 <option value="1군">1군만</option>
@@ -438,10 +470,9 @@
 
     <div id="roster" class="tab-content active">
         <div class="notice-box">
-            💡 <b>v47.0 패치 안내</b><br>
-            • <b>🤖 AI 구단 약화 방지</b>: 시즌 경과 시 AI 구단이 약해지던 문제를 수정하여 지속적인 전력 보충 및 재계약 AI가 강화되었습니다.<br>
-            • <b>📈 일반 선수 A+(13) 잠재력 보장</b>: 일반 선수도 최대 A+ 잠재력을 받아 성장 후 해외 포스팅 진출(A0 이상)이 가능합니다.<br>
-            • <b>⭐ 별선수 특혜 부여</b>: Star/Legend 선수는 성장 보너스를 받으며, 7년 대신 <b>5년만 근속</b>하면 메이저리그 포스팅이 가능합니다.
+            💡 <b>단장 멀티v1 시스템 가이드</b><br>
+            • <b>FA 요구 연봉 계단화 재설정</b>: B- 등급(5억), B 등급(6억), B+ 등급(7~8억) 등 등급별 수급 연봉이 정상적이고 단계적으로 인상 조정되었습니다.<br>
+            • <b>오프시즌 재계약 방출 기능 제공</b>: 만료 선수 협상 시 [❌ 방출] 버튼을 클릭해 재계약을 거절하고 자유계약선수/방출 처리할 수 있습니다.
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
@@ -456,7 +487,8 @@
                 <button class="pos-filter" onclick="filterRoster('외야수')">외야수</button>
                 <button class="pos-filter" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="filterRoster('POSTING')">✈️ 포스팅/성골</button>
             </div>
-            <div style="display:flex; gap:6px;">
+            <div style="display:flex; gap:6px; align-items:center;">
+                <span style="font-size:0.78rem; font-weight:bold; color:var(--accent-blue);">긴급 보충: <b id="emergency-refill-text">0</b>/3회</span>
                 <button class="btn btn-info" onclick="autoFillMissingPlayers()">🛠️ 긴급 육성선수 보충</button>
                 <button class="btn btn-warning" onclick="autoAssignFirstTier()">자동 1군 필수 엔트리 구성</button>
             </div>
@@ -468,15 +500,14 @@
                     <tr>
                         <th>구분 (역할)</th>
                         <th>포지션</th>
-                        <th>이름 (특성)</th>
+                        <th>이름 (더블클릭 약력)</th>
                         <th>나이 (근속)</th>
                         <th>현재 능력 <button class="sort-btn" onclick="toggleRosterSort('current')">▲▼</button></th>
                         <th>잠재 능력 <button class="sort-btn" onclick="toggleRosterSort('potential')">▲▼</button></th>
                         <th>연봉 <button class="sort-btn" onclick="toggleRosterSort('salary')">▲▼</button></th>
                         <th>계약기간</th>
-                        <th>2군 고정</th>
+                        <th>고정 / 트레이드 보호</th>
                         <th>엔트리 변경</th>
-                        <th>방출 (-50% 캡차감)</th>
                     </tr>
                 </thead>
                 <tbody id="roster-list"></tbody>
@@ -488,13 +519,13 @@
         <div id="market-preview-box" class="market-preview-box">
             <div style="font-weight:800; font-size:0.92rem; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
                 <span>🔮 [이번 시즌 영입 풀 스카우팅 리포트] <span id="preview-year-text">2026</span>년 시장 동향 분석</span>
-                <span class="tier-badge tier-1" style="font-size:0.75rem;">⭐ 실제 생성 영입 풀 동적 연동</span>
+                <span class="tier-badge tier-1" style="font-size:0.75rem;">⭐ 유저 전용 영입 풀 확보 완료</span>
             </div>
             <div id="market-preview-content"></div>
         </div>
 
         <div class="sub-nav">
-            <button class="market-btn active" onclick="switchMarket('foreign')">외국인 용병 (인원당 3명 생성 / 계약 1년)</button>
+            <button class="market-btn active" onclick="switchMarket('foreign')">외국인 용병 (플레이어 전용 3명 생성 / 계약 1년)</button>
             <button class="market-btn" onclick="switchMarket('fa')">FA 시장 (인원당 4명 생성 / 최대 3명 영입)</button>
         </div>
 
@@ -507,7 +538,7 @@
                 <thead>
                     <tr>
                         <th>포지션</th>
-                        <th>이름 (특성)</th>
+                        <th>이름 (더블클릭 약력)</th>
                         <th>나이</th>
                         <th>현재 능력</th>
                         <th>잠재 능력</th>
@@ -522,7 +553,7 @@
     </div>
 
     <div id="trade" class="tab-content">
-        <h2>KBO 구단(AI 컴퓨터)들의 다양화된 분기별 트레이드 제안서 (분기당 5장)</h2>
+        <h2>KBO 구단(AI 컴퓨터) 트레이드 제안서 (분기당 5장)</h2>
         <div id="trade-block-container">
             <p style="text-align: center; padding: 30px; color: var(--text-muted);">분기 진행(36G, 72G, 108G) 완료 시 트레이드 마감 카드가 생성됩니다.</p>
         </div>
@@ -532,7 +563,7 @@
         <h2>🤝 인간 단장 간 직접 트레이드 (도착 제안함 & 직접 요청)</h2>
         <div class="notice-box">
             • <b>도착한 제안함</b>: 다른 인간 단장이 나에게 보낸 트레이드 제안을 확인하고 수락/거절할 수 있습니다.<br>
-            • <b>직접 트레이드 요청</b>: **2분기 종료 시점(72G 완료 직후)**에 오직 다른 인간 단장을 대상으로 1회 제안 가능합니다 (용병은 트레이드 불가).
+            • <b>직접 트레이드 요청</b>: **2분기 종료 시점(72G 완료 직후)**에 오직 다른 인간 단장을 대상으로 1회 제안 가능합니다 (용병, FA 및 트레이드 불가 지정 선수 제외).
         </div>
 
         <h3 style="margin-top:16px; font-size:1rem; color:var(--primary);">📬 1. 도착한 트레이드 제안함</h3>
@@ -544,14 +575,14 @@
         <div id="direct-trade-main-box" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
             <div style="flex:1; min-width:300px; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
                 <div class="form-group">
-                    <label for="dt-target-player">상대 인간 단장 구단 선수 선택 (용병 제외)</label>
+                    <label for="dt-target-player">상대 인간 단장 구단 선수 선택 (용병, FA, 보호선수 제외)</label>
                     <select id="dt-target-player"></select>
                 </div>
             </div>
 
             <div style="flex:1; min-width:300px; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
                 <div class="form-group">
-                    <label for="dt-my-player">보낼 내 선수 선택 (용병 제외)</label>
+                    <label for="dt-my-player">보낼 내 선수 선택 (용병, FA, 보호선수 제외)</label>
                     <select id="dt-my-player"></select>
                 </div>
                 <button id="dt-request-btn" class="btn btn-success" style="width:100%; margin-top:14px; padding:10px;" onclick="sendDirectTradeRequest()">📨 상대 단장에게 트레이드 요청 보내기</button>
@@ -566,27 +597,26 @@
             <p style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid var(--border-color);">현재 해외 포스팅을 요청한 선수가 없습니다.</p>
         </div>
 
-        <h2>1. 만료 선수 재계약 협상 (33세 이상 장기 계약은 최대 2년)</h2>
+        <h2>1. 만료 선수 재계약 협상 (33세 이상 장기 계약은 최대 2년 / 방출 선택 가능)</h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>포지션</th>
-                        <th>이름 (특성)</th>
+                        <th>이름 (더블클릭 약력)</th>
                         <th>나이</th>
                         <th>현재 능력</th>
                         <th>잠재 능력</th>
-                        <th>계약 선택지 (1년 계약 / 장기 계약)</th>
-                        <th>거절(방출)</th>
+                        <th>계약 선택지 (1년 계약 / 장기 계약 / 방출)</th>
                     </tr>
                 </thead>
                 <tbody id="resign-list">
-                    <tr><td colspan="7" style="color:var(--text-muted);">현재 만료 예정인 선수가 없습니다.</td></tr>
+                    <tr><td colspan="6" style="color:var(--text-muted);">현재 만료 예정인 선수가 없습니다.</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <h2 style="margin-top: 24px;">2. 신인 드래프트 (1명씩 순차 지목 / 최대 5명 / 턴제 지명)</h2>
+        <h2 style="margin-top: 24px;">2. 신인 드래프트 (별선수 잠재력 A 이상 특급 풀)</h2>
         <div class="draft-order-banner">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span>🎯 <b>신인 드래프트 지명 순서 (참가 플레이어 전용 / 최대 5명)</b>:</span>
@@ -600,7 +630,7 @@
                 <thead>
                     <tr>
                         <th>포지션</th>
-                        <th>이름 (특성)</th>
+                        <th>이름 (더블클릭 약력)</th>
                         <th>나이</th>
                         <th>현재 능력</th>
                         <th>잠재 능력</th>
@@ -647,7 +677,7 @@
         <h3>시즌 진행 및 경기 기록 Log</h3>
         <div id="game-log" class="log-box">게임에 오신 것을 환영합니다! [1분기 진행] 버튼을 눌러 시즌을 개막하세요.<br></div>
 
-        <h3>리그 순위표</h3>
+        <h3>리그 순위표 및 샐러리캡 현황</h3>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -656,6 +686,7 @@
                         <th>팀명</th>
                         <th>담당자 (생애주기)</th>
                         <th>팀 전력</th>
+                        <th>총 연봉 / 실효 캡</th>
                         <th>승</th>
                         <th>패</th>
                         <th>무</th>
@@ -706,8 +737,9 @@
         <h2>이어하기 코드 (Save / Load)</h2>
         <div style="margin-bottom: 20px;">
             <h3>현재 진행 상황 내보내기 (Export)</h3>
-            <button class="btn btn-info" style="margin-top:6px;" onclick="generateSaveCode()">세이브 코드 생성하기</button>
-            <textarea id="export-code-area" readonly placeholder="[세이브 코드 생성하기] 버튼을 누르면 코드가 여기에 나타납니다."></textarea>
+            <p style="font-size:0.8rem; color:var(--accent-green); font-weight:bold; margin-top:2px;">📦 Deflate 고축소 압축 알고리즘이 적용되어 코드가 80% 이상 짧아졌습니다.</p>
+            <button class="btn btn-info" style="margin-top:6px;" onclick="generateSaveCode()">초압축 세이브 코드 생성하기</button>
+            <textarea id="export-code-area" readonly placeholder="[초압축 세이브 코드 생성하기] 버튼을 누르면 축소된 코드가 여기에 나타납니다."></textarea>
         </div>
         <div>
             <h3>세이브 코드 불러오기 (Import)</h3>
@@ -730,16 +762,16 @@
     };
 
     const TEAM_MARKET_SIZES = {
-        "삼성 라이온즈": { size: "대형", baseCap: 120, minPw: 5.2, maxPw: 7.2 },
-        "kt 위즈": { size: "중형", baseCap: 110, minPw: 5.2, maxPw: 7.2 },
-        "LG 트윈스": { size: "대형", baseCap: 120, minPw: 5.0, maxPw: 7.0 },
-        "KIA 타이거즈": { size: "대형", baseCap: 115, minPw: 5.0, maxPw: 7.0 },
-        "두산 베어스": { size: "중형", baseCap: 110, minPw: 5.0, maxPw: 7.0 },
-        "SSG 랜더스": { size: "대형", baseCap: 115, minPw: 4.8, maxPw: 6.8 },
-        "한화 이글스": { size: "대형", baseCap: 115, minPw: 4.8, maxPw: 6.8 },
-        "롯데 자이언츠": { size: "중형", baseCap: 110, minPw: 4.8, maxPw: 6.8 },
-        "NC 다이노스": { size: "중형", baseCap: 100, minPw: 4.8, maxPw: 6.8 },
-        "키움 히어로즈": { size: "소형", baseCap: 90, minPw: 4.5, maxPw: 6.5 }
+        "삼성 라이온즈": { size: "대형", baseCap: 120, minPw: 5.8, maxPw: 7.2 },
+        "kt 위즈": { size: "중형", baseCap: 110, minPw: 5.8, maxPw: 7.2 },
+        "LG 트윈스": { size: "대형", baseCap: 120, minPw: 5.6, maxPw: 7.0 },
+        "KIA 타이거즈": { size: "대형", baseCap: 115, minPw: 5.6, maxPw: 7.0 },
+        "두산 베어스": { size: "중형", baseCap: 110, minPw: 5.6, maxPw: 7.0 },
+        "SSG 랜더스": { size: "대형", baseCap: 115, minPw: 5.4, maxPw: 6.8 },
+        "한화 이글스": { size: "대형", baseCap: 115, minPw: 5.4, maxPw: 6.8 },
+        "롯데 자이언츠": { size: "중형", baseCap: 110, minPw: 5.4, maxPw: 6.8 },
+        "NC 다이노스": { size: "중형", baseCap: 100, minPw: 5.4, maxPw: 6.8 },
+        "키움 히어로즈": { size: "소형", baseCap: 90, minPw: 5.2, maxPw: 6.5 }
     };
 
     const LEGEND_NAMES = [
@@ -780,6 +812,8 @@
     let teamDeadCapMap = {};
     let teamLastSeasonCapPenaltyMap = {};
     let directTradeUsedMap = {};
+    let emergencyRefillCountMap = {};
+    let aiOverCapYearsMap = {};
     let incomingTradeProposals = [];
     let aiTeamLifecycleMap = {};
     let postedPlayersMap = {};
@@ -808,18 +842,10 @@
     let rosterSortOrder = 'desc';
 
     let psData = {
-        top5: [],
-        currentRound: 'WC',
-        gameNum: 1,
-        teamA: null,
-        teamB: null,
-        winsA: 0,
-        winsB: 0,
-        targetWins: 0,
-        wcWinner: null, wcLoser: null,
-        semiWinner: null, semiPoLoser: null,
-        poWinner: null, poLoser: null,
-        ksWinner: null, ksRunnerUp: null
+        top5: [], currentRound: 'WC', gameNum: 1,
+        teamA: null, teamB: null, winsA: 0, winsB: 0, targetWins: 0,
+        wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null,
+        poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null
     };
 
     const lastNames = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황", "안", "송", "전", "홍", "유", "고", "문", "양", "손", "배", "백", "허", "남", "심", "노", "하", "곽", "성", "차", "주", "우", "구", "신", "민"];
@@ -834,6 +860,50 @@
 
     function getRandomForeignName() {
         return foreignFirst[Math.floor(Math.random() * foreignFirst.length)] + " " + foreignLast[Math.floor(Math.random() * foreignLast.length)];
+    }
+
+    document.addEventListener('click', function(e) {
+        const bioPip = document.getElementById('player-bio-pip');
+        if (bioPip && bioPip.style.display !== 'none') {
+            if (!bioPip.contains(e.target) && !e.target.closest('.player-row-clickable')) {
+                closePlayerBioModal();
+            }
+        }
+    });
+
+    async function compressSaveData(jsonStr) {
+        if ('CompressionStream' in window) {
+            const stream = new Blob([jsonStr]).stream().pipeThrough(new CompressionStream('deflate'));
+            const response = new Response(stream);
+            const buffer = await response.arrayBuffer();
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        } else {
+            return btoa(encodeURIComponent(jsonStr));
+        }
+    }
+
+    async function decompressSaveData(base64Str) {
+        if ('DecompressionStream' in window) {
+            try {
+                const binary = atob(base64Str);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+                const response = new Response(stream);
+                return await response.text();
+            } catch(e) {
+                return decodeURIComponent(atob(base64Str));
+            }
+        } else {
+            return decodeURIComponent(atob(base64Str));
+        }
     }
 
     function updateSoundVolume(val) {
@@ -875,18 +945,11 @@
         } catch(e) {}
     }
 
-    function openCheatModal() {
-        document.getElementById('cheat-modal').style.display = 'flex';
-    }
-
-    function closeCheatModal() {
-        document.getElementById('cheat-modal').style.display = 'none';
-    }
+    function openCheatModal() { document.getElementById('cheat-modal').style.display = 'flex'; }
+    function closeCheatModal() { document.getElementById('cheat-modal').style.display = 'none'; }
 
     function cheatAddCap() {
-        if (TEAM_MARKET_SIZES[myTeamName]) {
-            TEAM_MARKET_SIZES[myTeamName].baseCap += 50;
-        }
+        if (TEAM_MARKET_SIZES[myTeamName]) TEAM_MARKET_SIZES[myTeamName].baseCap += 50;
         log(`🕹️ <b>[치트 사용]</b> ${myTeamName} 구단의 기본 샐러리캡이 +50억 원 증액되었습니다!`);
         broadcastGameState();
         alert("💰 샐러리캡 50억 원이 추가되었습니다!");
@@ -899,6 +962,7 @@
             if (p.tier === 1) {
                 p.current = Math.min(15, p.current + 2);
                 p.potential = Math.max(p.current, p.potential);
+                p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
                 p.lastChangeReason = "🕹️ 치트 전력 버프";
                 buffedCount++;
             }
@@ -945,13 +1009,17 @@
         let badges = '';
         if (p.isLegend) badges += `<span class="legend-badge">⭐ 별선수</span>`;
         if (p.isForeign) badges += `<span class="foreign-badge">🌐 용병</span>`;
+        if (p.isFA) badges += `<span class="protected-badge" style="background:#d97706; color:#fff;">FA</span>`;
+        if (p.isToxic) badges += `<span class="toxic-badge">💸 악성계약</span>`;
+        if (p.isUntradeable) badges += `<span class="untradeable-badge">🚫 트레이드불가</span>`;
+        else if (p.isLockedToTier2) badges += `<span class="lock-badge">🔒 2군고정</span>`;
+
         if (p.isPostedInMLB) {
             badges += `<span class="mlb-badge" style="background: linear-gradient(135deg, #0284c7 0%, #1e40af 100%);">✈️ MLB 진출중(${p.postedMLBYears}년차)</span>`;
         } else {
             if (!p.isLegend && !p.hasMLBBadge && p.teamTenure >= 7) badges += `<span class="homegrown-badge">👑 성골</span>`;
             if (p.hasMLBBadge) badges += `<span class="mlb-badge">🇺🇸 메이저리거(${p.postedMLBYears}년)</span>`;
         }
-        if (p.isLockedToTier2) badges += `<span class="lock-badge">🔒 고정</span>`;
         return badges;
     }
 
@@ -996,7 +1064,6 @@
     function switchPipTab(tab) {
         document.getElementById('pip-tab-btn-status').classList.toggle('active', tab === 'status');
         document.getElementById('pip-tab-btn-growth').classList.toggle('active', tab === 'growth');
-        
         document.getElementById('pip-view-status').style.display = (tab === 'status') ? 'flex' : 'none';
         document.getElementById('pip-view-growth').style.display = (tab === 'growth') ? 'flex' : 'none';
 
@@ -1045,16 +1112,11 @@
         });
     }
 
-    function showJoinInput() {
-        document.getElementById('join-box').style.display = 'block';
-    }
+    function showJoinInput() { document.getElementById('join-box').style.display = 'block'; }
 
     function initGuest() {
         const hostCode = document.getElementById('input-room-code').value.trim();
-        if (!hostCode) {
-            alert("방 코드를 입력하세요.");
-            return;
-        }
+        if (!hostCode) { alert("방 코드를 입력하세요."); return; }
 
         myGMName = document.getElementById('input-gm-name').value.trim() || "게스트 단장";
         myTeamName = document.getElementById('select-team').value;
@@ -1069,12 +1131,7 @@
                 document.getElementById('lobby-box').style.display = 'block';
                 document.getElementById('peer-code-display').innerText = "방에 연결됨: " + hostCode;
                 
-                hostConn.send({
-                    type: 'JOIN',
-                    peerId: myPeerId,
-                    name: myGMName,
-                    teamName: myTeamName
-                });
+                hostConn.send({ type: 'JOIN', peerId: myPeerId, name: myGMName, teamName: myTeamName });
             });
 
             hostConn.on('data', (data) => handleGuestReceivedData(data));
@@ -1084,7 +1141,6 @@
 
     function toggleSeasonReady() {
         mySeasonReady = !mySeasonReady;
-        
         if (isHost) {
             const p = playersInRoom.find(x => x.peerId === myPeerId);
             if (p) p.isSeasonReady = mySeasonReady;
@@ -1101,64 +1157,40 @@
             if (takenTeams.includes(selected)) {
                 selected = KBO_TEAMS.find(t => !takenTeams.includes(t)) || selected;
             }
-
-            playersInRoom.push({
-                peerId: data.peerId,
-                name: data.name,
-                teamName: selected,
-                isHost: false,
-                isReady: true,
-                isSeasonReady: false
-            });
-
+            playersInRoom.push({ peerId: data.peerId, name: data.name, teamName: selected, isHost: false, isReady: true, isSeasonReady: false });
             broadcastLobbyState();
         } else if (data.type === 'CHANGE_TEAM') {
             const p = playersInRoom.find(x => x.peerId === data.peerId);
-            if (p) {
-                p.teamName = data.teamName;
-                broadcastLobbyState();
-            }
+            if (p) { p.teamName = data.teamName; broadcastLobbyState(); }
         } else if (data.type === 'TOGGLE_SEASON_READY') {
             const p = playersInRoom.find(x => x.peerId === data.peerId);
-            if (p) {
-                p.isSeasonReady = data.isSeasonReady;
-                broadcastGameState();
-            }
+            if (p) { p.isSeasonReady = data.isSeasonReady; broadcastGameState(); }
         } else if (data.type === 'ACTION_ROSTER_UPDATE') {
-            allTeamRosters[data.teamName] = data.roster;
-            broadcastGameState();
+            allTeamRosters[data.teamName] = data.roster; broadcastGameState();
         } else if (data.type === 'ACTION_MARKET_SIGN') {
-            processMarketSign(data.teamName, data.marketType, data.playerId);
-            broadcastGameState();
+            processMarketSign(data.teamName, data.marketType, data.playerId); broadcastGameState();
         } else if (data.type === 'ACTION_TRADE_ACCEPT') {
-            processTradeAccept(data.teamName, data.tradeId);
-            broadcastGameState();
+            processTradeAccept(data.teamName, data.tradeId); broadcastGameState();
         } else if (data.type === 'ACTION_TRADE_DECLINE') {
-            processTradeDecline(data.teamName, data.tradeId);
-            broadcastGameState();
+            processTradeDecline(data.teamName, data.tradeId); broadcastGameState();
         } else if (data.type === 'ACTION_DIRECT_TRADE_REQUEST') {
             routeDirectTradeProposal(data.proposal);
         } else if (data.type === 'ACTION_DIRECT_TRADE_RESPONSE') {
             executeDirectTradeResponse(data);
         } else if (data.type === 'ACTION_DRAFT_PICK') {
-            processDraftPick(data.teamName, data.playerId);
-            broadcastGameState();
+            processDraftPick(data.teamName, data.playerId); broadcastGameState();
         } else if (data.type === 'ACTION_DRAFT_PASS') {
-            processDraftPass(data.teamName);
-            broadcastGameState();
+            processDraftPass(data.teamName); broadcastGameState();
         } else if (data.type === 'ACTION_RESIGN') {
-            processResignAction(data.teamName, data.playerId, data.optionIdx, data.accept);
-            broadcastGameState();
+            processResignAction(data.teamName, data.playerId, data.optionIdx, data.accept); broadcastGameState();
         } else if (data.type === 'ACTION_POSTING_DECISION') {
-            processPostingDecision(data.teamName, data.playerId, data.accept);
-            broadcastGameState();
+            processPostingDecision(data.teamName, data.playerId, data.accept); broadcastGameState();
         }
     }
 
     function handleGuestReceivedData(data) {
         if (data.type === 'LOBBY_UPDATE') {
-            playersInRoom = data.players;
-            renderLobbyList();
+            playersInRoom = data.players; renderLobbyList();
             const myInfo = playersInRoom.find(p => p.peerId === myPeerId);
             if (myInfo && myInfo.teamName !== myTeamName) {
                 myTeamName = myInfo.teamName;
@@ -1170,8 +1202,7 @@
         } else if (data.type === 'LOG_MSG') {
             log(data.msg, false);
         } else if (data.type === 'DIRECT_TRADE_PROPOSAL') {
-            incomingTradeProposals.push(data.proposal);
-            updateInboxUI();
+            incomingTradeProposals.push(data.proposal); updateInboxUI();
             alert(`📬 [새로운 트레이드 제안] [${data.proposal.fromGM}] 단장(${data.proposal.fromTeam})으로부터 직접 트레이드 제안이 도착했습니다! '유저 트레이드' 탭을 확인하세요.`);
         } else if (data.type === 'ERROR') {
             alert(data.msg);
@@ -1188,20 +1219,11 @@
         document.getElementById('connected-count').innerText = playersInRoom.length;
         const list = document.getElementById('connected-players-list');
         list.innerHTML = '';
-        
         playersInRoom.forEach(p => {
-            list.innerHTML += `
-                <div class="multi-player-chip ${p.isHost ? 'host' : ''}">
-                    ${p.isHost ? '👑' : '🎮'} <b>${p.name}</b> (${p.teamName})
-                </div>
-            `;
+            list.innerHTML += `<div class="multi-player-chip ${p.isHost ? 'host' : ''}">${p.isHost ? '👑' : '🎮'} <b>${p.name}</b> (${p.teamName})</div>`;
         });
-
         const startBtn = document.getElementById('start-game-btn');
-        if (startBtn && isHost) {
-            startBtn.disabled = false;
-            startBtn.innerText = "시즌 개막하기";
-        }
+        if (startBtn && isHost) { startBtn.disabled = false; startBtn.innerText = "시즌 개막하기"; }
     }
 
     function copyRoomCode() {
@@ -1221,29 +1243,42 @@
         }
     }
 
+    function recordTeamChange(player, newTeamName, year) {
+        if (!player) return;
+        if (!player.teamHistory) player.teamHistory = [];
+        if (player.teamHistory.length === 0) {
+            player.teamHistory.push({ startYear: year, endYear: year, team: newTeamName });
+            return;
+        }
+        let lastH = player.teamHistory[player.teamHistory.length - 1];
+        if (lastH.team === newTeamName) {
+            lastH.endYear = year;
+        } else {
+            lastH.endYear = year; 
+            player.teamHistory.push({ startYear: year, endYear: year, team: newTeamName });
+        }
+    }
+
+    function syncRosterTeamHistory(teamName) {
+        let roster = allTeamRosters[teamName] || [];
+        roster.forEach(p => {
+            recordTeamChange(p, teamName, currentYear);
+        });
+    }
+
     function startMultiGame() {
         if (!isHost) return;
 
-        faSignedCountMap = {};
-        foreignSignedCountMap = {};
-        draftPicksCountMap = {};
-        draftPassedMap = {};
-        teamDeadCapMap = {};
-        teamLastSeasonCapPenaltyMap = {};
-        directTradeUsedMap = {};
-        aiTeamLifecycleMap = {};
-        postedPlayersMap = {};
-        postingCandidatesMap = {};
+        faSignedCountMap = {}; foreignSignedCountMap = {}; draftPicksCountMap = {}; draftPassedMap = {};
+        teamDeadCapMap = {}; teamLastSeasonCapPenaltyMap = {}; directTradeUsedMap = {};
+        emergencyRefillCountMap = {}; aiOverCapYearsMap = {}; aiTeamLifecycleMap = {};
+        postedPlayersMap = {}; postingCandidatesMap = {};
 
         KBO_TEAMS.forEach(t => {
-            teamDeadCapMap[t] = 0.0;
-            teamLastSeasonCapPenaltyMap[t] = 0.0;
-            draftPicksCountMap[t] = 0;
-            draftPassedMap[t] = false;
-            foreignSignedCountMap[t] = 0;
-            directTradeUsedMap[t] = false;
-            postedPlayersMap[t] = [];
-            postingCandidatesMap[t] = [];
+            teamDeadCapMap[t] = 0.0; teamLastSeasonCapPenaltyMap[t] = 0.0;
+            draftPicksCountMap[t] = 0; draftPassedMap[t] = false; foreignSignedCountMap[t] = 0;
+            directTradeUsedMap[t] = false; emergencyRefillCountMap[t] = 0; aiOverCapYearsMap[t] = 0;
+            postedPlayersMap[t] = []; postingCandidatesMap[t] = [];
 
             let phases = ['CONTENDER', 'PLATEAU', 'RISING'];
             aiTeamLifecycleMap[t] = {
@@ -1257,50 +1292,72 @@
 
         KBO_TEAMS.forEach(team => {
             let roster = [];
-            let marketInfo = TEAM_MARKET_SIZES[team];
-            let cap = marketInfo.baseCap;
-            let targetTotalSalary = Math.round(cap * 0.75);
-
             let isHumanControlled = playersInRoom.some(p => p.teamName === team);
-            let cpuBuff = isHumanControlled ? 0 : 2; 
 
-            for (let i = 0; i < 30; i++) {
-                let pos = i < 6 ? '선발' : (i < 13 ? '불펜' : (i < 15 ? '포수' : (i < 22 ? '내야수' : '외야수')));
-                let age = Math.floor(Math.random() * 15) + 20;
+            for (let i = 0; i < 28; i++) {
+                let pos = i < 5 ? '선발' : (i < 12 ? '불펜' : (i < 14 ? '포수' : (i < 21 ? '내야수' : '외야수')));
+                let age = Math.floor(Math.random() * 14) + 20;
 
-                let isStarter = (i < 5 || (i >= 6 && i < 9) || i === 13 || (i >= 15 && i < 19) || (i >= 22 && i < 25));
-                let curr = 4;
+                let isStarter = (i < 5 || (i >= 5 && i < 8) || i === 12 || (i >= 14 && i < 18) || (i >= 21 && i < 24));
+                let curr = 6; 
 
-                if (i === 0 || i === 6 || i === 15) {
-                    curr = Math.floor(Math.random() * 3) + 7 + cpuBuff;
+                if (i === 0 || i === 5 || i === 14) {
+                    curr = Math.floor(Math.random() * 2) + 7; 
                 } else if (isStarter) {
-                    curr = Math.floor(Math.random() * 3) + 4 + cpuBuff;
+                    curr = Math.floor(Math.random() * 2) + 6; 
                 } else {
-                    curr = Math.floor(Math.random() * 2) + 3 + cpuBuff;
+                    curr = Math.floor(Math.random() * 2) + 4; 
                 }
 
-                /* v47.0 패치: 일반 선수도 최대 A+(13) 잠재력 가질 수 있도록 상향 */
-                let pot = Math.max(curr, Math.min(13, curr + Math.floor(Math.random() * 4) + (isHumanControlled ? 0 : 1)));
-                let p = createPlayer(pos, age, curr, pot);
+                let pot = Math.max(curr, Math.min(9, curr + Math.floor(Math.random() * 2))); 
+                let p = createPlayer(pos, age, curr, pot, false, false, false, "", team);
                 p.tier = 2;
-                p.teamTenure = Math.floor(Math.random() * 6) + 1;
+                p.teamTenure = Math.floor(Math.random() * 5) + 1;
                 p.seasonStartCurrent = curr;
-                p.lastChangeReason = "🔄 초기 전력 설정";
+
+                if (curr >= 12) p.salary = Math.floor(Math.random() * 3) + 10;
+                else if (curr >= 10) p.salary = Math.floor(Math.random() * 3) + 7;
+                else if (curr >= 8) p.salary = Math.floor(Math.random() * 2) + 5;
+                else if (curr === 7) p.salary = 4;
+                else if (curr >= 5) p.salary = Math.floor(Math.random() * 2) + 2;
+                else p.salary = 1;
+
+                p.lastChangeReason = "🔄 창단 로스터 구성";
+                recordTeamChange(p, team, currentYear);
                 roster.push(p);
             }
+
+            let toxicCandidates = roster.filter(p => p.age >= 28 || p.current <= 6);
+            toxicCandidates.sort(() => Math.random() - 0.5);
+            let toxicTargetList = toxicCandidates.slice(0, 3);
+
+            toxicTargetList.forEach(tp => {
+                tp.salary = Math.floor(Math.random() * 4) + 9;
+                tp.contractYears = Math.floor(Math.random() * 2) + 2;
+                tp.isToxic = true;
+                tp.lastChangeReason = "💸 창단 악성계약 체결";
+            });
+
+            if (!isHumanControlled) {
+                let fPitcherCurr = 9;
+                let fPitcher = createPlayer('선발', Math.floor(Math.random() * 7) + 25, fPitcherCurr, 10, true, false, false, "", team);
+                fPitcher.salary = Math.floor(Math.random() * 3) + 10;
+                fPitcher.contractYears = 1; fPitcher.tier = 1;
+                fPitcher.lastChangeReason = "🌐 창단 용병 선발";
+                recordTeamChange(fPitcher, team, currentYear);
+                roster.push(fPitcher);
+
+                let fHitterCurr = 9;
+                let fHitter = createPlayer('외야수', Math.floor(Math.random() * 7) + 25, fHitterCurr, 10, true, false, false, "", team);
+                fHitter.salary = Math.floor(Math.random() * 3) + 10;
+                fHitter.contractYears = 1; fHitter.tier = 1;
+                fHitter.lastChangeReason = "🌐 창단 용병 타자";
+                recordTeamChange(fHitter, team, currentYear);
+                roster.push(fHitter);
+            }
+
             allTeamRosters[team] = roster;
             autoAssignFirstTierForTeam(team);
-
-            let tier1Players = roster.filter(p => p.tier === 1);
-            let targetTier1Sum = targetTotalSalary;
-
-            let currentTier1Sum = tier1Players.reduce((sum, p) => sum + p.salary, 0);
-            if (currentTier1Sum > 0) {
-                let ratio = targetTier1Sum / currentTier1Sum;
-                tier1Players.forEach(p => {
-                    p.salary = Math.max(1, Math.round(p.salary * ratio));
-                });
-            }
         });
 
         generateMarketPool();
@@ -1313,39 +1370,20 @@
         if (guestConns.length > 0) guestConns.forEach(c => c.send({ type: 'GAME_START', state: statePayload }));
         
         syncGameState(statePayload);
-        setPipAlert("게임 개막 완료! 1분기 준비 중 (상대 전력 ? 은폐)");
-        log(`<b>${currentYear} KBO 단장 시뮬레이터 v47.0이 개막했습니다!</b>`);
+        setPipAlert("게임 개막 완료! 단장 멀티v1 가동 중");
+        log(`<b>${currentYear} 단장 멀티v1이 개막했습니다! (FA 요구연봉 계단 재설정 / 오프시즌 재계약 방출 기능 적용)</b>`);
     }
 
     function getFullGameStatePayload() {
         return {
-            currentYear,
-            phase,
-            salaryCap,
-            playoffCapBonus,
-            teamDeadCapMap,
-            teamLastSeasonCapPenaltyMap,
-            directTradeUsedMap,
-            aiTeamLifecycleMap,
-            postedPlayersMap,
-            postingCandidatesMap,
-            gmLevel,
-            gmExp,
-            allTeamRosters,
-            marketPool,
-            marketPreviewSummary,
-            draftPool,
-            resignCandidatesMap,
-            tradeProposalsMap,
-            faSignedCountMap,
-            foreignSignedCountMap,
-            draftPicksCountMap,
-            draftPassedMap,
-            foreignDraftOrder,
-            standings,
-            seasonHistory,
-            playersInRoom,
-            psData
+            currentYear, phase, salaryCap, playoffCapBonus,
+            teamDeadCapMap, teamLastSeasonCapPenaltyMap, directTradeUsedMap,
+            emergencyRefillCountMap, aiOverCapYearsMap, aiTeamLifecycleMap,
+            postedPlayersMap, postingCandidatesMap, gmLevel, gmExp,
+            allTeamRosters, marketPool, marketPreviewSummary, draftPool,
+            resignCandidatesMap, tradeProposalsMap, faSignedCountMap,
+            foreignSignedCountMap, draftPicksCountMap, draftPassedMap,
+            foreignDraftOrder, standings, seasonHistory, playersInRoom, psData
         };
     }
 
@@ -1363,12 +1401,13 @@
         teamDeadCapMap = state.teamDeadCapMap || {};
         teamLastSeasonCapPenaltyMap = state.teamLastSeasonCapPenaltyMap || {};
         directTradeUsedMap = state.directTradeUsedMap || {};
+        emergencyRefillCountMap = state.emergencyRefillCountMap || {};
+        aiOverCapYearsMap = state.aiOverCapYearsMap || {};
         aiTeamLifecycleMap = state.aiTeamLifecycleMap || {};
         postedPlayersMap = state.postedPlayersMap || {};
         postingCandidatesMap = state.postingCandidatesMap || {};
         
         salaryCap = TEAM_MARKET_SIZES[myTeamName] ? TEAM_MARKET_SIZES[myTeamName].baseCap : state.salaryCap;
-        
         gmLevel = state.gmLevel || 1;
         gmExp = state.gmExp || 0;
         allTeamRosters = state.allTeamRosters;
@@ -1423,31 +1462,44 @@
         return `<span style="background-color:${style.bg}; color:${style.text}; padding:2px 6px; border-radius:4px; font-weight:800; display:inline-block; min-width:32px; text-align:center; font-size:0.78rem;">${gStr}</span>`;
     }
 
-    /* v47.0 패치: 일반 선수도 잠재력이 최대 A+(13)까지 형성되도록 개선 */
-    function createPlayer(pos, age, currVal, potVal, isForeign = false, isFA = false, isLegend = false, legendName = "") {
+    function createPlayer(pos, age, currVal, potVal, isForeign = false, isFA = false, isLegend = false, legendName = "", initialTeam = "") {
         let curr = typeof currVal === 'number' ? currVal : gradeToVal(currVal || 'C');
         let pot = typeof potVal === 'number' ? potVal : gradeToVal(potVal || 'B');
 
         if (isLegend) {
-            pot = typeof potVal === 'number' ? potVal : Math.floor(Math.random() * 2) + 14;
-            curr = typeof currVal === 'number' ? currVal : Math.floor(Math.random() * 3) + 12;
+            pot = typeof potVal === 'number' ? potVal : Math.floor(Math.random() * 4) + 12;
+            curr = typeof currVal === 'number' ? currVal : Math.floor(Math.random() * 2) + 8;
             if (curr > pot) curr = pot;
         } else {
-            pot = typeof potVal === 'number' ? potVal : Math.min(13, Math.max(curr, Math.floor(Math.random() * 5) + 9)); 
+            pot = typeof potVal === 'number' ? potVal : Math.min(12, Math.max(curr, Math.floor(Math.random() * 3) + 5)); 
             if (pot < curr) pot = curr;
         }
 
-        let name = legendName || (isForeign ? getRandomForeignName() : getRandomKoreanName());
-        let base = curr * 0.85;
-        let sal = Math.max(1, Math.round(base + (Math.random() * 3.0) - 1.5));
-        
-        if (curr <= 5) {
-            sal = 1;
+        if (age <= 23 && !isForeign && !isLegend) {
+            if (curr > 4) curr = 4; 
+            if (curr < 2) curr = 2; 
         }
 
-        if (isLegend) sal = Math.max(1, Math.round(sal * 0.75));
+        let name = legendName || (isForeign ? getRandomForeignName() : getRandomKoreanName());
+        
+        let baseSal = 1;
+        if (curr >= 12) baseSal = Math.round(Math.pow(curr, 1.25) * 0.38 + Math.random() * 2);
+        else if (curr >= 8) baseSal = Math.round(Math.pow(curr, 1.1) * 0.35 + Math.random() * 1.5);
+        else if (curr === 7) baseSal = 4;
+        else if (curr >= 5) baseSal = Math.round(curr * 0.50);
+        else baseSal = 1;
+
+        let sal = Math.max(1, baseSal);
+        if (curr <= 4) sal = 1;
+
+        if (isForeign) sal += 1;
 
         let cYears = isForeign ? 1 : (Math.floor(Math.random() * 3) + 2);
+
+        let initialTeamHistory = [];
+        if (initialTeam) {
+            initialTeamHistory.push({ startYear: currentYear, endYear: currentYear, team: initialTeam });
+        }
 
         return {
             id: Math.random().toString(36).substr(2, 9),
@@ -1456,28 +1508,123 @@
             age: age || (isLegend ? 22 : Math.floor(Math.random() * 12) + 20),
             current: curr,
             potential: pot,
+            peakCurrent: curr, 
             salary: sal,
             contractYears: cYears,
             tier: 2,
             isLegend: !!isLegend,
             isForeign: !!isForeign,
+            isFA: !!isFA,
+            isToxic: false,
+            lockState: 0, 
             isLockedToTier2: false,
+            isUntradeable: false,
             teamTenure: 0,
             seasonStartCurrent: curr,
             hasMLBBadge: false,
             postedMLBYears: 0,
             lastChangeReason: "🔄 신규 계약",
-            growthHistory: []
+            growthHistory: [],
+            teamHistory: initialTeamHistory, 
+            championships: [] 
         };
     }
 
-    function getMyRoster() {
-        return allTeamRosters[myTeamName] || [];
+    function openPlayerBioModal(playerId) {
+        let player = null;
+        for (let t in allTeamRosters) {
+            let p = allTeamRosters[t].find(x => x.id === playerId);
+            if (p) { player = p; break; }
+        }
+        if (!player) {
+            for (let t in postedPlayersMap) {
+                let p = postedPlayersMap[t].find(x => x.id === playerId);
+                if (p) { player = p; break; }
+            }
+        }
+        if (!player) {
+            player = marketPool.foreign.find(x => x.id === playerId) || marketPool.fa.find(x => x.id === playerId) || draftPool.find(x => x.id === playerId);
+        }
+        if (!player) return;
+
+        const modal = document.getElementById('player-bio-pip');
+        const body = document.getElementById('bio-pip-body');
+        const headerTitle = document.getElementById('bio-header-title');
+
+        headerTitle.innerHTML = `📜 <b>${player.name}</b> 상세 약력 리포트`;
+
+        let peakGrade = valToGrade(player.peakCurrent || player.current);
+        let teamHistoryHTML = '<li>소속 이력 없음</li>';
+        if (player.teamHistory && player.teamHistory.length > 0) {
+            teamHistoryHTML = player.teamHistory.map(th => {
+                let yearStr = (th.startYear === th.endYear) ? `${th.startYear}년` : `${th.startYear}~${th.endYear}년`;
+                return `<li><b>${yearStr}</b> ${th.team}</li>`;
+            }).join('');
+        }
+
+        let championshipsHTML = '0회';
+        if (player.championships && player.championships.length > 0) {
+            championshipsHTML = player.championships.map(c => `<span style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-weight:800; margin-right:4px;">🏆 ${c}</span>`).join(' ');
+        }
+
+        let mlbStatusText = player.postedMLBYears > 0 ? `${player.postedMLBYears}년 경력` : '없음';
+
+        body.innerHTML = `
+            <div class="bio-card-section" style="background:#eff6ff; border-color:#bfdbfe;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <b style="font-size:1.1rem; color:var(--primary);">${player.name}</b> ${getPlayerBadgesHTML(player)}
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+                            ${player.position} | 나이: ${player.age}세 | 연봉: ${player.salary}억 원 | 근속: ${player.teamTenure}년
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:0.75rem; color:var(--text-muted);">현재/잠재</span><br>
+                        ${getGradeBadgeHTML(player.current)} / ${getGradeBadgeHTML(player.potential)}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>👑 통산 우승 경력</span>
+                    <span style="color:var(--accent-gold); font-weight:bold;">${player.championships ? player.championships.length : 0}회 달성</span>
+                </div>
+                <div style="font-size:0.8rem; margin-top:4px;">${championshipsHTML}</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>⭐ 통산 최고 능력치</span>
+                    <span style="color:var(--accent-red); font-weight:bold;">${peakGrade}</span>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">전성기 시절 달성한 최고 기량 등급입니다.</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>✈️ 메이저리그(MLB) 경력</span>
+                    <span style="color:var(--accent-blue); font-weight:bold;">${mlbStatusText}</span>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">${player.isPostedInMLB ? '현재 메이저리그에서 활약 중입니다.' : '해외 진출 이력 정보입니다.'}</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>🏢 구단 소속 기록</span>
+                </div>
+                <ul style="padding-left:18px; font-size:0.78rem; line-height:1.6; color:var(--text-dark);">
+                    ${teamHistoryHTML}
+                </ul>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
     }
 
-    function getMyTotalSalary() {
-        return getMyRoster().reduce((s, p) => s + p.salary, 0);
-    }
+    function closePlayerBioModal() { document.getElementById('player-bio-pip').style.display = 'none'; }
+    function getMyRoster() { return allTeamRosters[myTeamName] || []; }
+    function getMyTotalSalary() { return getMyRoster().reduce((s, p) => s + p.salary, 0); }
 
     function calculateTeamPowerBreakdown(roster) {
         const tier1Roster = roster.filter(p => p.tier === 1);
@@ -1487,10 +1634,7 @@
         const getPosSlotWeightedAvg = (arr, slots) => {
             if (arr.length === 0) return 1.0;
             arr.sort((a, b) => b - a);
-            
-            let totalWeightedSum = 0;
-            let totalWeight = 0;
-            let playerIdx = 0;
+            let totalWeightedSum = 0, totalWeight = 0, playerIdx = 0;
 
             slots.forEach(slot => {
                 for (let k = 0; k < slot.count; k++) {
@@ -1500,7 +1644,6 @@
                     playerIdx++;
                 }
             });
-
             return totalWeight > 0 ? totalWeightedSum / totalWeight : 1.0;
         };
 
@@ -1519,7 +1662,8 @@
             relieverGrade: valToGrade(pwReliever),
             catcherGrade: valToGrade(pwCatcher),
             infieldGrade: valToGrade(pwInfield),
-            outfieldGrade: valToGrade(pwOutfield)
+            outfieldGrade: valToGrade(pwOutfield),
+            posPowerRaw: { '선발': pwStarter, '불펜': pwReliever, '포수': pwCatcher, '내야수': pwInfield, '외야수': pwOutfield }
         };
     }
 
@@ -1534,9 +1678,7 @@
         let runningCount = 0;
         for (let slot of slots) {
             runningCount += slot.count;
-            if (rankIdx < runningCount) {
-                return slot.name;
-            }
+            if (rankIdx < runningCount) return slot.name;
         }
         return '예비';
     }
@@ -1577,20 +1719,32 @@
         const player = myRoster.find(p => p.id === id);
         if (!player) return;
 
-        player.isLockedToTier2 = !player.isLockedToTier2;
-        if (player.isLockedToTier2) player.tier = 2;
+        if (player.lockState === undefined) {
+            player.lockState = player.isLockedToTier2 ? 1 : 0;
+        }
+
+        player.lockState = (player.lockState + 1) % 3;
+
+        if (player.lockState === 1) {
+            player.isLockedToTier2 = true;
+            player.isUntradeable = false;
+            player.tier = 2;
+        } else if (player.lockState === 2) {
+            player.isLockedToTier2 = true;
+            player.isUntradeable = true;
+            player.tier = 2;
+        } else {
+            player.isLockedToTier2 = false;
+            player.isUntradeable = false;
+        }
 
         if (isHost) broadcastGameState();
         else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: myRoster });
     }
 
     function toggleRosterSort(field) {
-        if (rosterSortField === field) {
-            rosterSortOrder = (rosterSortOrder === 'asc') ? 'desc' : 'asc';
-        } else {
-            rosterSortField = field;
-            rosterSortOrder = 'desc';
-        }
+        if (rosterSortField === field) rosterSortOrder = (rosterSortOrder === 'asc') ? 'desc' : 'asc';
+        else { rosterSortField = field; rosterSortOrder = 'desc'; }
         renderRoster();
     }
 
@@ -1601,18 +1755,15 @@
         renderRoster();
     }
 
-    /* v47.0 패치: 5년만 뛴 별선수(isLegend)도 포스팅 대상 필터에 정상 출력 */
     function renderRoster() {
         const list = document.getElementById('roster-list');
         list.innerHTML = '';
         const myRoster = getMyRoster();
 
         let filtered = [...myRoster];
-        if (currentPosFilter === '1군') {
-            filtered = myRoster.filter(p => p.tier === 1);
-        } else if (currentPosFilter === '2군') {
-            filtered = myRoster.filter(p => p.tier === 2);
-        } else if (currentPosFilter === 'POSTING') {
+        if (currentPosFilter === '1군') filtered = myRoster.filter(p => p.tier === 1);
+        else if (currentPosFilter === '2군') filtered = myRoster.filter(p => p.tier === 2);
+        else if (currentPosFilter === 'POSTING') {
             let activeCandidates = myRoster.filter(p => 
                 (!p.isLegend && p.teamTenure >= 7 && p.current >= 12) || 
                 (p.isLegend && p.teamTenure >= 5 && p.current >= 12) || 
@@ -1625,10 +1776,8 @@
         }
 
         filtered.sort((a, b) => {
-            let valA = a[rosterSortField];
-            let valB = b[rosterSortField];
-            if (rosterSortOrder === 'asc') return valA - valB;
-            else return valB - valA;
+            let valA = a[rosterSortField]; let valB = b[rosterSortField];
+            return rosterSortOrder === 'asc' ? valA - valB : valB - valA;
         });
 
         filtered.forEach(p => {
@@ -1646,9 +1795,19 @@
             let isProtected = (p.tier === 2 && p.age < 24 && !p.isForeign);
             let protectionTagHTML = isProtected ? `<span class="protected-badge">🛡️ 보존중</span>` : '';
 
+            let lockBtnClass = 'btn-info';
+            let lockBtnText = '🔓 해제';
+            if (p.lockState === 1 || (p.isLockedToTier2 && !p.isUntradeable)) {
+                lockBtnClass = 'btn-warning';
+                lockBtnText = '🔒 2군고정';
+            } else if (p.lockState === 2 || p.isUntradeable) {
+                lockBtnClass = 'btn-danger';
+                lockBtnText = '🚫 트레이드불가';
+            }
+
             if (p.isPostedInMLB) {
                 list.innerHTML += `
-                    <tr style="background:#f0f9ff;">
+                    <tr style="background:#f0f9ff;" class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                         <td><span class="tier-badge" style="background:#0284c7; color:#fff;">✈️ MLB</span></td>
                         <td><b>${p.position}</b></td>
                         <td><b>${p.name}</b>${badgesHTML}</td>
@@ -1657,12 +1816,12 @@
                         <td>${getGradeBadgeHTML(p.potential)}</td>
                         <td>-</td>
                         <td>-</td>
-                        <td colspan="3" style="color:var(--accent-blue); font-weight:bold;">✈️ 메이저리그 진출 활약 중</td>
+                        <td colspan="2" style="color:var(--accent-blue); font-weight:bold;">✈️ 메이저리그 진출 활약 중</td>
                     </tr>
                 `;
             } else {
                 list.innerHTML += `
-                    <tr>
+                    <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                         <td><span class="tier-badge ${p.tier === 1 ? 'tier-1' : 'tier-2'}">${p.tier === 1 ? '1군' : '2군'}</span> ${slotTagHTML}</td>
                         <td><b>${p.position}</b></td>
                         <td><b>${p.name}</b>${badgesHTML}</td>
@@ -1672,8 +1831,8 @@
                         <td>${displaySalary}</td>
                         <td><b>${p.contractYears}년</b>${protectionTagHTML}</td>
                         <td>
-                            <button class="btn ${p.isLockedToTier2 ? 'btn-danger' : 'btn-info'}" style="font-size:0.72rem;" onclick="toggleLockTier2('${p.id}')">
-                                ${p.isLockedToTier2 ? '🔓 해제' : '🔒 고정'}
+                            <button class="btn ${lockBtnClass}" style="font-size:0.72rem;" onclick="toggleLockTier2('${p.id}')">
+                                ${lockBtnText}
                             </button>
                         </td>
                         <td>
@@ -1681,44 +1840,53 @@
                                 ${p.tier === 1 ? '2군 말소' : '1군 등록'}
                             </button>
                         </td>
-                        <td>
-                            <button class="btn btn-danger" onclick="releasePlayer('${p.id}')">방출</button>
-                        </td>
                     </tr>
                 `;
             }
         });
         document.getElementById('roster-count').innerText = myRoster.length;
+        document.getElementById('emergency-refill-text').innerText = emergencyRefillCountMap[myTeamName] || 0;
     }
 
     function autoFillMissingPlayers() {
         let myRoster = getMyRoster();
+        let currentRefillCount = emergencyRefillCountMap[myTeamName] || 0;
 
+        if (currentRefillCount >= 3) {
+            alert("[긴급 보충 한도 초과] 긴급 육성선수 보충은 한 시즌에 최대 3회까지만 이용할 수 있습니다.");
+            return;
+        }
+
+        let addedCount = 0;
         POSITIONS.forEach(pos => {
             let slots = POS_SLOTS[pos];
             let reqMin = slots.reduce((s, x) => s + x.count, 0);
             let currentPosCount = myRoster.filter(p => p.position === pos).length;
             while (currentPosCount < reqMin) {
-                let p = createPlayer(pos, 20, 3, 8);
-                p.salary = 1;
-                p.contractYears = 2;
-                p.tier = 2;
-                myRoster.push(p);
-                currentPosCount++;
+                let curr = Math.floor(Math.random() * 2) + 2; 
+                let pot = Math.max(curr, Math.floor(Math.random() * 3) + 4); 
+                let p = createPlayer(pos, 20, curr, pot, false, false, false, "", myTeamName);
+                p.salary = 1; p.contractYears = 2; p.tier = 2; p.lastChangeReason = "🛠️ 긴급 육성 보충";
+                recordTeamChange(p, myTeamName, currentYear);
+                myRoster.push(p); currentPosCount++; addedCount++;
             }
         });
 
         while (myRoster.length < 28) {
             let randomPos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
-            let p = createPlayer(randomPos, 20, 3, 8);
-            p.salary = 1;
-            p.contractYears = 2;
-            p.tier = 2;
-            myRoster.push(p);
+            let curr = Math.floor(Math.random() * 2) + 2;
+            let pot = Math.max(curr, Math.floor(Math.random() * 3) + 4);
+            let p = createPlayer(randomPos, 20, curr, pot, false, false, false, "", myTeamName);
+            p.salary = 1; p.contractYears = 2; p.tier = 2; p.lastChangeReason = "🛠️ 긴급 육성 보충";
+            recordTeamChange(p, myTeamName, currentYear);
+            myRoster.push(p); addedCount++;
         }
 
+        emergencyRefillCountMap[myTeamName] = currentRefillCount + 1;
         allTeamRosters[myTeamName] = myRoster;
         autoAssignFirstTier();
+
+        log(`🛠️ <b>[긴급 보충 사용 (${emergencyRefillCountMap[myTeamName]}/3회)]</b> 부족한 자리를 긴급 육성선수(${addedCount}명)로 충원했습니다.`);
     }
 
     function autoAssignFirstTierForTeam(teamName) {
@@ -1731,7 +1899,6 @@
         POSITIONS.forEach(pos => {
             let slots = POS_SLOTS[pos];
             let reqCount = slots.reduce((s, x) => s + x.count, 0);
-
             let candidates = roster
                 .filter(p => p.position === pos && !p.isLockedToTier2)
                 .sort((a, b) => (b.current - a.current) || (b.potential - a.potential));
@@ -1741,8 +1908,7 @@
                 if (added >= reqCount) break;
                 if (p.isForeign && foreignTier1Count >= 2) continue;
 
-                p.tier = 1;
-                selectedIds.add(p.id);
+                p.tier = 1; selectedIds.add(p.id);
                 if (p.isForeign) foreignTier1Count++;
                 added++;
             }
@@ -1758,8 +1924,7 @@
                 if (currentTier1Count >= 28) break;
                 if (p.isForeign && foreignTier1Count >= 2) continue;
 
-                p.tier = 1;
-                selectedIds.add(p.id);
+                p.tier = 1; selectedIds.add(p.id);
                 if (p.isForeign) foreignTier1Count++;
                 currentTier1Count++;
             }
@@ -1774,22 +1939,6 @@
         else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: getMyRoster() });
     }
 
-    function releasePlayer(id) {
-        let myRoster = getMyRoster();
-        const player = myRoster.find(p => p.id === id);
-        if (!player || myRoster.length <= 22) return;
-        
-        let penalty = player.hasMLBBadge ? 0 : Math.round(player.salary * 0.5 * 10) / 10;
-        teamDeadCapMap[myTeamName] = (teamDeadCapMap[myTeamName] || 0) + penalty;
-
-        allTeamRosters[myTeamName] = myRoster.filter(p => p.id !== id);
-        
-        log(`💸 <b>[선수 방출]</b> ${player.name} 선수를 방출하였습니다. (패널티: ${penalty}억 원 반영)`);
-
-        if (isHost) broadcastGameState();
-        else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: allTeamRosters[myTeamName] });
-    }
-
     function generateMarketPool() {
         let pCount = Math.max(1, playersInRoom.length);
         let foreignCount = pCount * 3;
@@ -1797,31 +1946,58 @@
 
         marketPool.foreign = Array.from({length: foreignCount}, () => {
             let isJrLegend = Math.random() < 0.04;
-            let age = Math.floor(Math.random() * 11) + 23;
+            let age = Math.floor(Math.random() * 10) + 23;
             let jrName = isJrLegend ? MLB_JR_LEGENDS[Math.floor(Math.random() * MLB_JR_LEGENDS.length)] : "";
 
-            let curr = isJrLegend ? Math.floor(Math.random() * 3) + 12 : Math.floor(Math.random() * 3) + 9;
-            let pot = isJrLegend ? Math.floor(Math.random() * 2) + 14 : Math.min(13, curr + Math.floor(Math.random() * 2));
+            let curr = isJrLegend ? Math.floor(Math.random() * 2) + 11 : Math.floor(Math.random() * 2) + 9;
+            let pot = isJrLegend ? 12 : Math.min(12, curr + 1);
 
             let p = createPlayer(null, age, curr, pot, true, false, isJrLegend, jrName);
-            p.salary = Math.max(1, Math.round(p.salary * 0.65));
+            p.salary = Math.max(1, Math.round(p.salary * 1.05) + 1);
             p.contractYears = 1;
             return p;
         });
 
         marketPool.fa = Array.from({length: faCount}, () => {
-            let age = Math.floor(Math.random() * 10) + 28;
-            let minCurrVal = 5; 
-            let curr = Math.min(13, Math.floor(Math.random() * 8) + minCurrVal); 
-            let pot = Math.max(curr, Math.min(14, curr + (Math.random() < 0.35 ? 2 : 1)));
+            let age = Math.floor(Math.random() * 8) + 27; 
+            let curr = Math.min(15, Math.floor(Math.random() * 8) + 5); // 5 (C-) ~ 12 (A0)
+            let pot = Math.max(curr, Math.min(15, curr + (Math.random() < 0.35 ? 1 : 0)));
 
             let p = createPlayer(null, age, curr, pot, false, true, false);
-            let faPremium = (age <= 31) ? 1.10 : 1.00;
-            p.salary = Math.max(1, Math.round(p.salary * faPremium));
-
-            if (p.age >= 33 && p.contractYears > 2) {
-                p.contractYears = 2;
+            p.isFA = true;
+            
+            // FA 등급별 정밀 요구 연봉 스케일링 계단식 재설정
+            let faBaseSalary = 1;
+            if (curr >= 15) {        // S+ (15점)
+                faBaseSalary = Math.floor(Math.random() * 3) + 19; // 19~21억
+            } else if (curr === 14) { // S (14점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 16; // 16~17억
+            } else if (curr === 13) { // A+ (13점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 13; // 13~14억
+            } else if (curr === 12) { // A0 (12점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 11; // 11~12억
+            } else if (curr === 11) { // A- (11점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 9;  // 9~10억
+            } else if (curr === 10) { // B+ (10점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 7;  // 7~8억
+            } else if (curr === 9) {  // B (9점)
+                faBaseSalary = 6;                                  // 6억 고정
+            } else if (curr === 8) {  // B- (8점)
+                faBaseSalary = 5;                                  // 5억 고정
+            } else if (curr === 7) {  // C+ (7점)
+                faBaseSalary = 4;                                  // 4억 고정
+            } else if (curr === 6) {  // C (6점)
+                faBaseSalary = 3;                                  // 3억 고정
+            } else if (curr === 5) {  // C- (5점)
+                faBaseSalary = 2;                                  // 2억 고정
+            } else {                  // D+ 이하
+                faBaseSalary = 1;                                  // 1억 고정
             }
+
+            let faPremium = (age <= 31) ? 1.12 : 1.0;
+            p.salary = Math.max(1, Math.round(faBaseSalary * faPremium));
+
+            if (p.age >= 33 && p.contractYears > 2) p.contractYears = 2;
 
             return p;
         });
@@ -1855,9 +2031,9 @@
 
             previewContentEl.innerHTML = `
                 📌 <b>스카우팅 리포트 (${currentYear}년 영입 시장 동적 분석)</b>:<br>
-                • 🔥 <b>주요 FA 대어급</b>: ${faStr}<br>
-                • 🌐 <b>주요 외국인 특급 자원</b>: ${foreignStr}<br>
-                💡 <i>매 시즌 새로이 출격한 영입 시장 풀의 대어급 선수들을 전력에 맞추어 선점하세요.</i>
+                • 🔥 <b>주요 FA 자원 (C~A급 스펙트럼)</b>: ${faStr}<br>
+                • 🌐 <b>주요 외국인 특급 자원 (평균 B~B+급)</b>: ${foreignStr}<br>
+                💡 <i>FA 시장으로 영입된 선수는 첫 계약 기간 동안 트레이드 불가 상태로 관리됩니다.</i>
             `;
         }
 
@@ -1866,9 +2042,8 @@
         const pool = marketPool[currentMarketType] || [];
         pool.forEach(p => {
             const badgesHTML = getPlayerBadgesHTML(p);
-
             list.innerHTML += `
-                <tr>
+                <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                     <td>${p.position}</td>
                     <td><b>${p.name}</b>${badgesHTML}</td>
                     <td>${p.age}세</td>
@@ -1890,14 +2065,18 @@
 
         if (marketType === 'fa') {
             faSignedCountMap[teamName] = (faSignedCountMap[teamName] || 0) + 1;
+            player.isFA = true; 
         } else if (marketType === 'foreign') {
             foreignSignedCountMap[teamName] = (foreignSignedCountMap[teamName] || 0) + 1;
         }
 
         player.tier = 2;
-        player.teamTenure = 0;
+        player.teamTenure = 0; 
         player.seasonStartCurrent = player.current;
         player.lastChangeReason = "🌐 신규 영입";
+        
+        recordTeamChange(player, teamName, currentYear);
+
         if (!allTeamRosters[teamName]) allTeamRosters[teamName] = [];
         allTeamRosters[teamName].push(player);
         marketPool[marketType] = pool.filter(p => p.id !== playerId);
@@ -1945,6 +2124,36 @@
         }
     }
 
+    function calculateTradeValue(player) {
+        if (!player) return 0;
+
+        let currScore = Math.pow(player.current, 1.4) * 8;
+        let potGap = Math.max(0, player.potential - player.current);
+
+        let ageFactor = 1.0;
+        if (player.age <= 23) ageFactor = 1.30;
+        else if (player.age <= 26) ageFactor = 1.15;
+        else if (player.age <= 29) ageFactor = 1.00;
+        else if (player.age <= 32) ageFactor = 0.85;
+        else ageFactor = Math.max(0.3, 1.0 - (player.age - 32) * 0.15);
+
+        let potScore = potGap * 6 * (player.age <= 26 ? 1.5 : 0.8);
+        let baseVal = (currScore + potScore) * ageFactor;
+
+        let expectedSalary = Math.max(1, player.current * 0.6);
+        let salaryRatio = player.salary / expectedSalary;
+
+        let salaryMult = 1.0;
+        if (salaryRatio > 1.3) {
+            salaryMult = Math.max(0.5, 1.0 - (salaryRatio - 1.3) * 0.35); 
+        } else if (salaryRatio < 0.7) {
+            salaryMult = 1.15; 
+        }
+
+        let legendMult = player.isLegend ? 1.10 : 1.0;
+        return Math.round(baseVal * salaryMult * legendMult);
+    }
+
     function generateCPUTradeProposals() {
         if (!isHost) return;
         tradeProposalsMap = {};
@@ -1953,60 +2162,84 @@
         const aiOnlyTeams = KBO_TEAMS.filter(t => !humanTeamNames.includes(t));
 
         KBO_TEAMS.forEach(targetTeam => {
-            let roster = (allTeamRosters[targetTeam] || []).filter(p => !p.isForeign);
-            if (roster.length === 0) return;
-
             let candidateAiTeams = aiOnlyTeams.filter(t => t !== targetTeam);
-            if (candidateAiTeams.length === 0) {
-                candidateAiTeams = KBO_TEAMS.filter(t => t !== targetTeam);
-            }
+            if (candidateAiTeams.length === 0) candidateAiTeams = KBO_TEAMS.filter(t => t !== targetTeam);
+
+            let myRoster = (allTeamRosters[targetTeam] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+            if (myRoster.length === 0) return;
 
             let proposals = [];
-            const offerTypes = [
-                { tag: '💰 [연봉 절감 오퍼]', type: 'SALARY_DUMP' },
-                { tag: '⚡ [전력 보강 오퍼]', type: 'POWER_UP' },
-                { tag: '💎 [유망주 교환 오퍼]', type: 'PROSPECT_SWAP' },
-                { tag: '⚖️ [균형 트레이드 오퍼]', type: 'BALANCED' },
-                { tag: '🔄 [리빌딩 오퍼]', type: 'FUTURE_BUILD' }
-            ];
 
             for (let k = 0; k < 5; k++) {
                 let cpuTeam = candidateAiTeams[Math.floor(Math.random() * candidateAiTeams.length)];
-                let oType = offerTypes[k % offerTypes.length];
-                let targetPos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
-                let myPlayer = roster[Math.floor(Math.random() * roster.length)] || roster[0];
-                let offerPlayer;
+                let aiRoster = (allTeamRosters[cpuTeam] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+                if (aiRoster.length === 0) continue;
 
-                let isMyPlayerHighValue = (myPlayer.current >= 11 || myPlayer.potential >= 12);
+                let lifecycleState = aiTeamLifecycleMap[cpuTeam] ? aiTeamLifecycleMap[cpuTeam].phase : 'PLATEAU';
+                let offerPlayer = null, myPlayer = null, tradeTag = '⚖️ [전력 보강 오퍼]';
 
-                if (oType.type === 'SALARY_DUMP') {
-                    offerPlayer = createPlayer(targetPos, 24, Math.max(3, myPlayer.current - 1), Math.max(4, myPlayer.potential - 1));
-                    offerPlayer.salary = Math.max(1, Math.round(myPlayer.salary * 0.4));
-                } else if (oType.type === 'POWER_UP') {
-                    let maxCurr = isMyPlayerHighValue ? 13 : 11;
-                    offerPlayer = createPlayer(targetPos, 29, Math.min(maxCurr, myPlayer.current + 1), Math.min(maxCurr, myPlayer.potential + 1));
-                    offerPlayer.salary = Math.round(myPlayer.salary * 1.3) + 1;
-                } else if (oType.type === 'PROSPECT_SWAP') {
-                    let maxPot = isMyPlayerHighValue ? 13 : 12;
-                    let potVal = Math.min(maxPot, Math.max(6, myPlayer.potential));
-                    offerPlayer = createPlayer(targetPos, 20, Math.max(3, myPlayer.current - 2), potVal);
-                    offerPlayer.salary = 1;
-                } else if (oType.type === 'FUTURE_BUILD') {
-                    let maxCurr = isMyPlayerHighValue ? 13 : 11;
-                    offerPlayer = createPlayer(targetPos, 31, Math.min(maxCurr, myPlayer.current + 1), Math.min(maxCurr, myPlayer.current + 1));
-                    offerPlayer.salary = Math.max(1, myPlayer.salary + 1);
-                } else {
-                    let maxCurr = isMyPlayerHighValue ? 13 : 11;
-                    offerPlayer = createPlayer(targetPos, 25, Math.min(maxCurr, myPlayer.current), Math.min(maxCurr, myPlayer.potential));
-                    offerPlayer.salary = myPlayer.salary;
+                let aiPowerBreakdown = calculateTeamPowerBreakdown(aiRoster);
+                let lowestPos = '선발';
+                let lowestVal = 99;
+                for (let pos in aiPowerBreakdown.posPowerRaw) {
+                    if (aiPowerBreakdown.posPowerRaw[pos] < lowestVal) {
+                        lowestVal = aiPowerBreakdown.posPowerRaw[pos];
+                        lowestPos = pos;
+                    }
                 }
+
+                let wantsNeedPos = Math.random() < 0.55; 
+
+                if (wantsNeedPos) {
+                    let needPosTargetList = myRoster.filter(p => p.position === lowestPos).sort((a,b) => b.current - a.current);
+                    if (needPosTargetList.length > 0) {
+                        myPlayer = needPosTargetList[0];
+                        tradeTag = `🎯 [${lowestPos} 보강을 위해 손해 감수 오퍼]`;
+                    }
+                }
+
+                if (!myPlayer) {
+                    if (lifecycleState === 'CONTENDER') {
+                        tradeTag = '👑 [우승 승부수: 손해 무릅쓴 오퍼]';
+                        let humanStarters = [...myRoster].sort((a,b) => b.current - a.current);
+                        myPlayer = humanStarters[Math.floor(Math.random() * Math.min(3, humanStarters.length))] || myRoster[0];
+                    } else if (lifecycleState === 'REBUILDING') {
+                        tradeTag = '🏗️ [리빌딩: 유망주 탐색 오퍼]';
+                        let humanProspects = myRoster.filter(p => p.age <= 25).sort((a,b) => b.potential - a.potential);
+                        myPlayer = humanProspects[0] || myRoster[Math.floor(Math.random() * myRoster.length)];
+                    } else {
+                        tradeTag = '⚖️ [맞춤 전력 교환 오퍼]';
+                        myPlayer = myRoster[Math.floor(Math.random() * myRoster.length)];
+                    }
+                }
+
+                let myVal = calculateTradeValue(myPlayer);
+
+                let validOffers = [];
+                if (wantsNeedPos || lifecycleState === 'CONTENDER') {
+                    validOffers = aiRoster.filter(p => {
+                        let val = calculateTradeValue(p);
+                        return val >= myVal * 1.02 && val <= myVal * 1.30; 
+                    });
+                }
+                
+                if (validOffers.length === 0) {
+                    validOffers = aiRoster.filter(p => {
+                        let val = calculateTradeValue(p);
+                        return val >= myVal * 0.85 && val <= myVal * 1.15;
+                    });
+                }
+
+                offerPlayer = validOffers[Math.floor(Math.random() * validOffers.length)] || null;
+
+                if (!offerPlayer || !myPlayer) continue;
 
                 proposals.push({
                     id: 'tr_' + Math.random().toString(36).substr(2, 7),
                     aiTeam: cpuTeam,
-                    tradeTag: oType.tag,
-                    offerPlayer,
-                    myPlayer
+                    tradeTag,
+                    offerPlayer: JSON.parse(JSON.stringify(offerPlayer)), 
+                    myPlayer: JSON.parse(JSON.stringify(myPlayer))
                 });
             }
 
@@ -2039,16 +2272,18 @@
             let offeredPosListHTML = offeredPosPlayers.map(p => `<li>${p.tier === 1 ? '[1군]' : '[2군]'} <b>${p.name}</b>${getPlayerBadgesHTML(p)} (${valToGrade(p.current)}, ${p.salary}억)</li>`).join('') || '<li>보유 선수 없음</li>';
             let requestedPosListHTML = requestedPosPlayers.map(p => `<li>${p.tier === 1 ? '[1군]' : '[2군]'} <b>${p.name}</b>${getPlayerBadgesHTML(p)} (${valToGrade(p.current)}, ${p.salary}억)</li>`).join('') || '<li>보유 선수 없음</li>';
 
+            let lifecycleLabel = aiTeamLifecycleMap[t.aiTeam] ? getLifecycleLabel(aiTeamLifecycleMap[t.aiTeam].phase) : 'AI';
+
             container.innerHTML += `
                 <div class="trade-card">
                     <div style="font-weight:bold; font-size:0.88rem; color:var(--text-dark); display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
                         <span>${t.tradeTag}</span>
-                        <span style="color:var(--text-muted); font-size:0.8rem;">[${t.aiTeam}]의 오퍼</span>
+                        <span style="color:var(--text-muted); font-size:0.8rem;">[${t.aiTeam} (${lifecycleLabel})] 구단 공식 제안</span>
                     </div>
                     <div class="trade-card-body">
                         <div class="trade-player-info">
-                            <div style="color:var(--accent-blue); font-weight:bold; font-size:0.85rem;">[${t.aiTeam}] 제시 선수 (내가 받을 포지션)</div>
-                            <div style="margin-top:4px; font-size:0.88rem;">
+                            <div style="color:var(--accent-blue); font-weight:bold; font-size:0.85rem;">[${t.aiTeam}] 상대 제시 선수</div>
+                            <div style="margin-top:4px; font-size:0.88rem;" class="player-row-clickable" ondblclick="openPlayerBioModal('${t.offerPlayer.id}')">
                                 <b>${t.offerPlayer.name}</b>${offerBadges} (${t.offerPlayer.position}, ${t.offerPlayer.age}세)<br>
                                 현재: ${getGradeBadgeHTML(t.offerPlayer.current)} / 잠재: ${getGradeBadgeHTML(t.offerPlayer.potential)}<br>
                                 연봉: <b style="color:var(--accent-blue);">${t.offerPlayer.salary}억 원</b> | 계약: <b>${t.offerPlayer.contractYears}년</b>
@@ -2056,8 +2291,8 @@
                         </div>
                         <div style="font-size: 1.2rem; font-weight: bold; color: var(--text-muted); text-align:center;">⇄</div>
                         <div class="trade-player-info">
-                            <div style="color:var(--accent-red); font-weight:bold; font-size:0.85rem;">[${myTeamName}] 요구 선수 (내가 줄 포지션)</div>
-                            <div style="margin-top:4px; font-size:0.88rem;">
+                            <div style="color:var(--accent-red); font-weight:bold; font-size:0.85rem;">[${myTeamName}] 요구 선수 (내가 내줄 선수)</div>
+                            <div style="margin-top:4px; font-size:0.88rem;" class="player-row-clickable" ondblclick="openPlayerBioModal('${t.myPlayer.id}')">
                                 <b>${t.myPlayer.name}</b>${myBadges} (${t.myPlayer.position}, ${t.myPlayer.age}세)<br>
                                 현재: ${getGradeBadgeHTML(t.myPlayer.current)} / 잠재: ${getGradeBadgeHTML(t.myPlayer.potential)}<br>
                                 연봉: <b style="color:var(--accent-red);">${t.myPlayer.salary}억 원</b> | 계약: <b>${t.myPlayer.contractYears}년</b>
@@ -2098,6 +2333,11 @@
         const proposals = tradeProposalsMap[myTeamName] || [];
         const trade = proposals.find(t => t.id === tradeId);
         if (trade) {
+            if (trade.offerPlayer.isFA || trade.myPlayer.isFA || trade.myPlayer.isUntradeable) {
+                alert("[트레이드 금지] FA 영입 선수 또는 트레이드 불가 지정 선수는 교환할 수 없습니다.");
+                return;
+            }
+
             let totalSalary = getMyTotalSalary();
             let salaryDiff = trade.offerPlayer.salary - trade.myPlayer.salary;
             let effectiveCap = getEffectiveCap(myTeamName);
@@ -2124,15 +2364,42 @@
         const trade = proposals.find(t => t.id === tradeId);
         if (!trade) return;
 
-        let roster = allTeamRosters[teamName] || [];
-        roster = roster.filter(p => p.id !== trade.myPlayer.id);
-        trade.offerPlayer.tier = 2;
-        trade.offerPlayer.seasonStartCurrent = trade.offerPlayer.current;
-        trade.offerPlayer.lastChangeReason = "🔄 트레이드 영입";
-        roster.push(trade.offerPlayer);
+        let myRoster = allTeamRosters[teamName] || [];
+        let aiTeamRoster = allTeamRosters[trade.aiTeam] || [];
 
-        allTeamRosters[teamName] = roster;
+        let offerP = aiTeamRoster.find(p => p.id === trade.offerPlayer.id);
+        let myP = myRoster.find(p => p.id === trade.myPlayer.id);
+
+        if (!offerP || !myP || offerP.isFA || myP.isFA || myP.isUntradeable) {
+            tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
+            log(`⚠️ <b>[트레이드 무효화]</b> 거래 대상 선수 중 이미 존재하지 않거나 FA/트레이드보호 선수가 포함되어 거래가 취소되었습니다.`);
+            alert("⚠️ 트레이드 대상 선수가 존재하지 않거나 보호 규정에 위반되어 거래가 무효화되었습니다.");
+            return;
+        }
+
+        myRoster = myRoster.filter(p => p.id !== myP.id);
+        aiTeamRoster = aiTeamRoster.filter(p => p.id !== offerP.id);
+
+        offerP.teamTenure = 0;
+        offerP.tier = 2;
+        offerP.seasonStartCurrent = offerP.current;
+        offerP.lastChangeReason = "🔄 트레이드 영입";
+        recordTeamChange(offerP, teamName, currentYear);
+        myRoster.push(offerP);
+        allTeamRosters[teamName] = myRoster;
+
+        myP.teamTenure = 0;
+        myP.tier = 2;
+        myP.seasonStartCurrent = myP.current;
+        myP.lastChangeReason = "🔄 트레이드 영입";
+        recordTeamChange(myP, trade.aiTeam, currentYear);
+        aiTeamRoster.push(myP);
+        allTeamRosters[trade.aiTeam] = aiTeamRoster;
+
+        autoAssignFirstTierForTeam(trade.aiTeam);
+
         tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
+        log(`🔄 <b>[트레이드 성공]</b> [${teamName}] <b>${offerP.name}</b> ⇄ [${trade.aiTeam}] <b>${myP.name}</b> 맞교환 완료!`);
     }
 
     function declineTrade(tradeId) {
@@ -2149,9 +2416,7 @@
         tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
     }
 
-    function openTradeBlockTab() {
-        switchTab('trade');
-    }
+    function openTradeBlockTab() { switchTab('trade'); }
 
     function initDirectTradeUI() {
         const targetPlayerSelect = document.getElementById('dt-target-player');
@@ -2187,7 +2452,7 @@
         }
 
         humanPlayers.forEach(hp => {
-            const hRoster = (allTeamRosters[hp.teamName] || []).filter(p => !p.isForeign);
+            const hRoster = (allTeamRosters[hp.teamName] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
             hRoster.forEach(p => {
                 const tierBadge = p.tier === 1 ? '[1군]' : '[2군]';
                 const markStr = (p.isLegend?'⭐ ':'') + (p.teamTenure>=7?'👑 ':'') + (p.hasMLBBadge?'🇺🇸 ':'');
@@ -2195,7 +2460,7 @@
             });
         });
 
-        const myRoster = getMyRoster().filter(p => !p.isForeign);
+        const myRoster = getMyRoster().filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
         myPlayerSelect.innerHTML = '';
         myRoster.forEach(p => {
             const tierBadge = p.tier === 1 ? '[1군]' : '[2군]';
@@ -2216,18 +2481,18 @@
         const [targetPeerId, targetTeamName, targetPlayerId] = targetVal.split('|');
         const myPlayer = getMyRoster().find(p => p.id === myPlayerId);
 
-        if (!myPlayer) return;
+        if (!myPlayer || myPlayer.isFA || myPlayer.isUntradeable) {
+            alert("FA 선수나 트레이드 불가 지정 선수는 트레이드할 수 없습니다.");
+            return;
+        }
+
         directTradeUsedMap[myTeamName] = true;
 
         const proposalObj = {
             id: 'dt_' + Math.random().toString(36).substr(2, 9),
-            fromTeam: myTeamName,
-            fromGM: myGMName,
-            fromPeerId: myPeerId,
-            fromPlayerId: myPlayerId,
-            fromPlayerName: myPlayer.name,
-            targetTeam: targetTeamName,
-            targetPlayerId: targetPlayerId
+            fromTeam: myTeamName, fromGM: myGMName, fromPeerId: myPeerId,
+            fromPlayerId: myPlayerId, fromPlayerName: myPlayer.name,
+            targetTeam: targetTeamName, targetPlayerId: targetPlayerId
         };
 
         if (targetPeerId === myPeerId) {
@@ -2237,22 +2502,14 @@
 
         if (isHost) {
             if (targetPeerId === myPeerId) {
-                incomingTradeProposals.push(proposalObj);
-                updateInboxUI();
+                incomingTradeProposals.push(proposalObj); updateInboxUI();
             } else {
                 const targetConn = guestConns.find(c => c.peer === targetPeerId);
-                if (targetConn) {
-                    targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal: proposalObj });
-                } else {
-                    alert("상대 단장과의 연결을 찾을 수 없습니다.");
-                }
+                if (targetConn) targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal: proposalObj });
+                else alert("상대 단장과의 연결을 찾을 수 없습니다.");
             }
         } else {
-            hostConn.send({
-                type: 'ACTION_DIRECT_TRADE_REQUEST',
-                proposal: proposalObj,
-                targetPeerId
-            });
+            hostConn.send({ type: 'ACTION_DIRECT_TRADE_REQUEST', proposal: proposalObj, targetPeerId });
         }
 
         alert("상대 단장에게 직접 트레이드 요청을 전송했습니다. 상대방의 [유저 트레이드] 탭에 표시됩니다.");
@@ -2262,15 +2519,12 @@
     function routeDirectTradeProposal(proposal) {
         if (isHost) {
             if (proposal.targetTeam === myTeamName || proposal.targetPeerId === myPeerId) {
-                incomingTradeProposals.push(proposal);
-                updateInboxUI();
+                incomingTradeProposals.push(proposal); updateInboxUI();
             } else {
                 const targetPlr = playersInRoom.find(p => p.teamName === proposal.targetTeam);
                 if (targetPlr) {
                     const targetConn = guestConns.find(c => c.peer === targetPlr.peerId);
-                    if (targetConn) {
-                        targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal });
-                    }
+                    if (targetConn) targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal });
                 }
             }
         }
@@ -2293,11 +2547,7 @@
                 executeAcceptedDirectTrade(proposal.fromTeam, proposal.targetTeam, proposal.fromPlayerId, proposal.targetPlayerId);
                 broadcastGameState();
             } else {
-                hostConn.send({
-                    type: 'ACTION_DIRECT_TRADE_RESPONSE',
-                    accepted: true,
-                    proposal
-                });
+                hostConn.send({ type: 'ACTION_DIRECT_TRADE_RESPONSE', accepted: true, proposal });
             }
             alert("트레이드 제안을 수락하여 선수 교환이 완료되었습니다!");
         } else {
@@ -2315,21 +2565,31 @@
         let playerA = rosterA.find(p => p.id === playerAId);
         let playerB = rosterB.find(p => p.id === playerBId);
 
-        if (!playerA || !playerB) return;
+        if (!playerA || !playerB || playerA.isFA || playerB.isFA || playerA.isUntradeable || playerB.isUntradeable) {
+            log(`⚠️ <b>[유저 트레이드 실패]</b> 트레이드 대상 선수 중 FA/보호선수가 있거나 대상이 없어 거래가 취소되었습니다.`);
+            alert("⚠️ 트레이드 대상 선수가 존재하지 않거나 영입/보호 규정에 위반되어 거래가 실패했습니다.");
+            return;
+        }
 
         rosterA = rosterA.filter(p => p.id !== playerAId);
         rosterB = rosterB.filter(p => p.id !== playerBId);
 
-        playerA.tier = 2;
-        playerB.tier = 2;
+        playerA.teamTenure = 0; playerB.teamTenure = 0;
+        playerA.tier = 2; playerB.tier = 2;
         playerA.lastChangeReason = "🤝 유저 직거래";
         playerB.lastChangeReason = "🤝 유저 직거래";
+
+        recordTeamChange(playerA, teamB, currentYear);
+        recordTeamChange(playerB, teamA, currentYear);
 
         rosterB.push(playerA);
         rosterA.push(playerB);
 
         allTeamRosters[teamA] = rosterA;
         allTeamRosters[teamB] = rosterB;
+
+        autoAssignFirstTierForTeam(teamA);
+        autoAssignFirstTierForTeam(teamB);
 
         log(`🤝 <b>[직접 트레이드 성사]</b> [${teamA}]의 ${playerA.name} ⇄ [${teamB}]의 ${playerB.name} 선수 맞교환 완료!`);
     }
@@ -2376,12 +2636,12 @@
                     <div class="trade-card-body">
                         <div class="trade-player-info">
                             <div style="color:var(--accent-blue); font-weight:bold; font-size:0.85rem;">받을 선수 (상대가 주는 선수)</div>
-                            <div style="margin-top:4px;">${offeredName}</div>
+                            <div style="margin-top:4px;" class="player-row-clickable" ondblclick="openPlayerBioModal('${offeredPlayer ? offeredPlayer.id : ''}')">${offeredName}</div>
                         </div>
                         <div style="font-size: 1.2rem; font-weight: bold; color: var(--text-muted); text-align:center;">⇄</div>
                         <div class="trade-player-info">
                             <div style="color:var(--accent-red); font-weight:bold; font-size:0.85rem;">보낼 선수 (내 선수)</div>
-                            <div style="margin-top:4px;">${targetName}</div>
+                            <div style="margin-top:4px;" class="player-row-clickable" ondblclick="openPlayerBioModal('${myTargetPlayer ? myTargetPlayer.id : ''}')">${targetName}</div>
                         </div>
                         <div style="display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:140px; align-items:flex-end;">
                             <small style="color:var(--accent-green); font-weight:bold;">${diffStr}</small>
@@ -2407,138 +2667,134 @@
     }
 
     function getLifecycleLabel(phase) {
-        const labels = {
-            'CONTENDER': '👑 전성기',
-            'PLATEAU': '⚖️ 세대교체',
-            'REBUILDING': '🏗️ 리빌딩',
-            'RISING': '📈 전력반등'
-        };
+        const labels = { 'CONTENDER': '👑 우승도전', 'PLATEAU': '⚖️ 세대교체', 'REBUILDING': '🏗️ 리빌딩', 'RISING': '📈 전력반등' };
         return labels[phase] || 'AI';
     }
 
-    /* v47.0 패치: AI 구단 지속적 장기 약화 문제 전면 수정 */
+    function manageAICapAndReleases(team) {
+        return;
+    }
+
     function processAITeamLifecycles() {
         const humanTeamNames = playersInRoom.map(p => p.teamName);
 
         KBO_TEAMS.forEach(team => {
             if (humanTeamNames.includes(team)) return; 
 
+            manageAICapAndReleases(team);
+
             let state = aiTeamLifecycleMap[team] || { phase: 'PLATEAU', years: 0, duration: 2 };
             let roster = allTeamRosters[team] || [];
-            let currentPowerNum = calculateTeamPowerBreakdown(roster).overallNum;
 
             state.years += 1;
 
             if (state.phase === 'CONTENDER') {
-                if (state.years >= state.duration || currentPowerNum < 7.5) {
-                    state.phase = 'REBUILDING';
-                    state.years = 0;
-                    state.duration = Math.floor(Math.random() * 2) + 2;
+                roster.forEach(p => {
+                    if (p.tier === 1 && p.current < 9 && Math.random() < 0.6) {
+                        p.current = Math.min(9, p.current + 1);
+                        p.potential = Math.max(p.current, p.potential);
+                        p.lastChangeReason = "👑 AI 우승도전 전력 강화";
+                    }
+                });
+                let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
+                if (state.years >= state.duration || updatedPower >= 8.8) {
+                    state.phase = 'REBUILDING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 2;
                     log(`🔄 <b>[구단 생애주기]</b> [${team}] 구단이 세대교체 <b>🏗️ 리빌딩</b>에 진입합니다.`);
                 }
             } else if (state.phase === 'REBUILDING') {
                 roster.forEach(p => {
-                    if (p.age <= 27 && p.current < Math.min(13, p.potential)) {
-                        p.current = Math.min(13, p.current + Math.floor(Math.random() * 2) + 1);
-                        p.lastChangeReason = "🏗️ AI 리빌딩 집중 육성";
+                    if (p.age >= 28 && p.current > 5 && Math.random() < 0.5) {
+                        p.current = Math.max(5, p.current - 1);
+                        p.lastChangeReason = "🏗️ AI 리빌딩 베테랑 교체";
+                    } else if (p.age <= 24 && p.current < 7 && Math.random() < 0.4) {
+                        p.current = Math.min(7, p.current + 1);
+                        p.lastChangeReason = "🏗️ AI 리빌딩 유망주 육성";
                     }
                 });
 
                 let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
-                if (state.years >= state.duration || updatedPower >= 7.0) {
-                    state.phase = 'RISING';
-                    state.years = 0;
-                    state.duration = Math.floor(Math.random() * 2) + 1;
+                if (state.years >= state.duration || updatedPower >= 6.2) {
+                    state.phase = 'RISING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 1;
                     log(`📈 <b>[구단 생애주기]</b> [${team}] 구단이 육성을 마치고 <b>📈 전력 반등기</b>로 접어듭니다.`);
                 }
             } else if (state.phase === 'RISING') {
                 roster.forEach(p => {
-                    if (p.current < Math.min(13, p.potential) && Math.random() < 0.80) {
-                        p.current = Math.min(13, p.current + 1);
+                    if (p.current < 8 && Math.random() < 0.5) {
+                        p.current = Math.min(8, p.current + 1);
+                        p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
                         p.lastChangeReason = "📈 AI 반등기 기량 개화";
                     }
                 });
 
                 let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
-                if (state.years >= state.duration || updatedPower >= 8.5) {
-                    state.phase = 'CONTENDER';
-                    state.years = 0;
-                    state.duration = Math.floor(Math.random() * 3) + 2;
-                    log(`👑 <b>[구단 생애주기]</b> [${team}] 구단이 우승권 <b>👑 전성기</b>에 진입했습니다!`);
+                if (state.years >= state.duration || updatedPower >= 7.8) {
+                    state.phase = 'CONTENDER'; state.years = 0; state.duration = Math.floor(Math.random() * 3) + 2;
+                    log(`👑 <b>[구단 생애주기]</b> [${team}] 구단이 우승권 <b>👑 우승도전</b>에 진입했습니다!`);
                 }
             } else { 
-                if (currentPowerNum >= 8.5) {
-                    state.phase = 'CONTENDER';
-                    state.years = 0;
-                    state.duration = Math.floor(Math.random() * 3) + 2;
-                } else if (currentPowerNum <= 6.5 || state.years >= state.duration) {
-                    state.phase = 'REBUILDING';
-                    state.years = 0;
-                    state.duration = Math.floor(Math.random() * 2) + 2;
+                roster.forEach(p => {
+                    if (p.current > 7 && Math.random() < 0.3) p.current--;
+                    else if (p.current < 6 && Math.random() < 0.3) p.current++;
+                });
+                let currentPowerNum = calculateTeamPowerBreakdown(roster).overallNum;
+                if (currentPowerNum >= 7.8) {
+                    state.phase = 'CONTENDER'; state.years = 0; state.duration = Math.floor(Math.random() * 3) + 2;
+                } else if (currentPowerNum <= 5.8 || state.years >= state.duration) {
+                    state.phase = 'REBUILDING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 2;
                 }
             }
-
-            /* AI 기본 경쟁력 강화를 위한 최소 전력 보존 알고리즘 */
-            let topTierCount = roster.filter(p => p.current >= 8).length;
-            if (topTierCount < 6) {
-                let youngCandidates = roster.filter(p => p.age <= 28).sort((a,b) => b.potential - a.potential);
-                for (let k = 0; k < Math.min(4, youngCandidates.length); k++) {
-                    youngCandidates[k].current = Math.min(13, youngCandidates[k].potential, Math.max(youngCandidates[k].current, 8 + k));
-                    youngCandidates[k].lastChangeReason = "🤖 AI 구단 전력 유지를 위한 기량 개화";
-                }
-            }
-
-            roster.forEach(p => {
-                if (p.current > 14) p.current = 14;
-            });
 
             autoAssignFirstTierForTeam(team);
             aiTeamLifecycleMap[team] = state;
         });
     }
 
-    /* v47.0 패치: 별선수(isLegend) 분기별 성장 보너스 지급 */
     function processQuarterlyGrowth(qNum) {
         KBO_TEAMS.forEach(team => {
             let roster = allTeamRosters[team] || [];
             roster.forEach(p => {
                 let growthGap = p.potential - p.current;
-                let oldCurr = p.current;
-                let oldPot = p.potential;
+                let oldCurr = p.current, oldPot = p.potential;
+                let legendBonus = p.isLegend ? 0.20 : 0.0;
 
-                /* 별선수 성장 보너스 확률 (+20%p 추가 성장 확률) */
-                let legendBonusProb = p.isLegend ? 0.20 : 0.0;
-
-                if (p.age <= 25) {
+                if (p.age >= 19 && p.age <= 24) {
                     if (growthGap > 0) {
-                        let quarterlyProb = (0.45 + (growthGap * 0.08) + legendBonusProb) / 4;
-
+                        let quarterlyProb = (0.70 + (growthGap * 0.10) + legendBonus) / 4;
                         if (Math.random() < quarterlyProb) {
                             p.current = Math.min(p.potential, p.current + 1);
-                            p.lastChangeReason = `⚡ Q${qNum} ${p.tier === 1 ? '1군 실전' : '2군 육성'} 기량 성장 (+1)${p.isLegend ? ' ⭐별선수보너스' : ''}`;
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `⚡ Q${qNum} 19~24세 유망주 유망성 폭발 (+1)`;
                         }
                     }
-                } else if (p.age <= 30) {
-                    if (growthGap > 0) {
-                        let quarterlyProb = (0.20 + (growthGap * 0.05) + legendBonusProb) / 4;
-                        if (Math.random() < quarterlyProb) {
-                            p.current = Math.min(p.potential, p.current + 1);
-                            p.lastChangeReason = `⚡ Q${qNum} 전성기 기량 만개 (+1)${p.isLegend ? ' ⭐별선수보너스' : ''}`;
-                        }
-                    }
-                } else {
-                    let ageFactor = p.age - 30;
-                    let quarterlyDeclineChance = Math.min(0.95, 0.35 + ageFactor * 0.12) / 4;
-
-                    if (Math.random() < quarterlyDeclineChance) {
-                        p.current = Math.max(1, p.current - 1);
-                        
-                        if (!p.isLegend) {
+                } else if (p.age >= 25) {
+                    if (p.age >= 26 && growthGap >= 2) {
+                        let convergenceProb = 0.50 / 4;
+                        if (Math.random() < convergenceProb) {
+                            p.current = Math.min(15, p.current + 1);
                             p.potential = Math.max(p.current, p.potential - 1);
-                            p.lastChangeReason = `📉 Q${qNum} 노화 에이징커브 (기량/잠재 저하 -1)`;
-                        } else {
-                            p.potential = Math.max(p.current, p.potential);
-                            p.lastChangeReason = `📉 Q${qNum} 노화 (기량 감소 -1, ⭐잠재보존)`;
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `🔄 Q${qNum} 26세+ 잠재-현재 간극 수렴 (현재+1/잠재-1)`;
+                        }
+                    } else if (growthGap > 0) {
+                        let quarterlyProb = (0.25 + (growthGap * 0.05) + legendBonus) / 4;
+                        if (Math.random() < quarterlyProb) {
+                            p.current = Math.min(p.potential, p.current + 1);
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `⚡ Q${qNum} 전성기 기량 만개 (+1)`;
+                        }
+                    }
+
+                    if (p.age >= 30) {
+                        let ageFactor = p.age - 30;
+                        let quarterlyDeclineChance = Math.min(0.90, 0.30 + ageFactor * 0.10) / 4;
+                        if (Math.random() < quarterlyDeclineChance) {
+                            p.current = Math.max(1, p.current - 1);
+                            if (!p.isLegend) {
+                                p.potential = Math.max(p.current, p.potential - 1);
+                                p.lastChangeReason = `📉 Q${qNum} 노화 에이징커브 (현재/잠재 -1)`;
+                            } else {
+                                p.lastChangeReason = `📉 Q${qNum} 노화 (기량 -1, ⭐잠재보존)`;
+                            }
                         }
                     }
                 }
@@ -2546,15 +2802,10 @@
                 if (p.current !== oldCurr || p.potential !== oldPot) {
                     if (!p.growthHistory) p.growthHistory = [];
                     p.growthHistory.push({
-                        year: currentYear,
-                        qNum,
-                        oldCurr,
-                        newCurr: p.current,
-                        oldPot,
-                        newPot: p.potential,
-                        reason: p.lastChangeReason,
-                        tier: p.tier
+                        year: currentYear, qNum, oldCurr, newCurr: p.current,
+                        oldPot, newPot: p.potential, reason: p.lastChangeReason, tier: p.tier
                     });
+                    if (p.growthHistory.length > 5) p.growthHistory.shift(); 
                 }
             });
         });
@@ -2568,7 +2819,6 @@
 
         playChimeSound();
         resetAllReadies();
-
         processQuarterlyGrowth(qNum);
 
         standings.forEach(t => {
@@ -2585,13 +2835,9 @@
 
                 for (let g = 0; g < games; g++) {
                     let rand = Math.random();
-                    if (rand < probA - 0.02) {
-                        standings[i].wins++; standings[j].losses++;
-                    } else if (rand > probA + 0.02) {
-                        standings[j].wins++; standings[i].losses++;
-                    } else {
-                        standings[i].draws++; standings[j].draws++;
-                    }
+                    if (rand < probA - 0.02) { standings[i].wins++; standings[j].losses++; }
+                    else if (rand > probA + 0.02) { standings[j].wins++; standings[i].losses++; }
+                    else { standings[i].draws++; standings[j].draws++; }
                 }
             }
         }
@@ -2602,7 +2848,7 @@
         if (qNum <= 3) {
             phase = `TRADE_${qNum}`;
             generateCPUTradeProposals();
-            log(`<b>[${qNum}분기 (${qNum*36}경기) 완료]</b> 실시간 기량 변동 반영 및 상대 전력이 공개되었습니다!`);
+            log(`<b>[${qNum}분기 (${qNum*36}경기) 완료]</b> 실시간 기량 변동 및 팀 전력 리포트 갱신 완료!`);
             setPipAlert(`${qNum}분기 (${qNum*36}경기) 완료!`);
         } else {
             phase = 'PS_READY';
@@ -2622,27 +2868,16 @@
         if (phase === 'PS_READY') {
             let top5 = standings.slice(0, 5);
             let top5Objs = top5.map(t => ({ name: t.name, powerNum: t.powerNum }));
-            
-            let team4 = top5Objs[3];
-            let team5 = top5Objs[4];
+            let team4 = top5Objs[3], team5 = top5Objs[4];
 
             psData = {
-                top5: top5Objs,
-                currentRound: 'WC',
-                gameNum: 1,
-                teamA: team4,
-                teamB: team5,
-                winsA: 1, 
-                winsB: 0,
-                targetWins: 2,
-                wcWinner: null, wcLoser: null,
-                semiWinner: null, semiPoLoser: null,
-                poWinner: null, poLoser: null,
-                ksWinner: null, ksRunnerUp: null
+                top5: top5Objs, currentRound: 'WC', gameNum: 1,
+                teamA: team4, teamB: team5, winsA: 1, winsB: 0, targetWins: 2,
+                wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null,
+                poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null
             };
 
             phase = 'PS_IN_PROGRESS';
-
             log(`🏆 <b>${currentYear} KBO 포스트시즌 개막!</b><br>1위: ${top5Objs[0].name} | 2위: ${top5Objs[1].name} | 3위: ${top5Objs[2].name} | 4위: ${top5Objs[3].name} | 5위: ${top5Objs[4].name}`);
             log(`⚾ <b>[와일드카드 결정전 개막]</b> 4위 [${team4.name}] (1승 우위) vs 5위 [${team5.name}]`);
             setPipAlert(`와일드카드 결정전 1차전 준비`);
@@ -2651,105 +2886,75 @@
         }
 
         if (phase === 'PS_IN_PROGRESS') {
-            let roundNames = {
-                'WC': '와일드카드 결정전',
-                'SEMI': '준플레이오프',
-                'PO': '플레이오프',
-                'KS': '한국시리즈'
-            };
-
+            let roundNames = { 'WC': '와일드카드 결정전', 'SEMI': '준플레이오프', 'PO': '플레이오프', 'KS': '한국시리즈' };
             let rName = roundNames[psData.currentRound] || '포스트시즌';
-            let tA = psData.teamA;
-            let tB = psData.teamB;
+            let tA = psData.teamA, tB = psData.teamB;
 
-            let pA = tA.powerNum;
-            let pB = tB.powerNum;
+            let pA = tA.powerNum, pB = tB.powerNum;
             let probA = Math.pow(pA, 3) / (Math.pow(pA, 3) + Math.pow(pB, 3));
             
             let isAWin = Math.random() < probA;
             let winner = isAWin ? tA : tB;
 
-            if (isAWin) psData.winsA++;
-            else psData.winsB++;
+            if (isAWin) psData.winsA++; else psData.winsB++;
 
             log(`⚾ <b>[${rName} ${psData.gameNum}차전]</b> <b>${winner.name}</b> 승리! (${tA.name} ${psData.winsA}승 vs ${tB.name} ${psData.winsB}승)`);
             setPipAlert(`${rName} ${psData.gameNum}차전: ${winner.name} 승리!`);
             psData.gameNum++;
 
-            let seriesWinner = null;
-            let seriesLoser = null;
-
-            if (psData.winsA >= psData.targetWins) {
-                seriesWinner = tA;
-                seriesLoser = tB;
-            } else if (psData.winsB >= psData.targetWins) {
-                seriesWinner = tB;
-                seriesLoser = tA;
-            }
+            let seriesWinner = null, seriesLoser = null;
+            if (psData.winsA >= psData.targetWins) { seriesWinner = tA; seriesLoser = tB; }
+            else if (psData.winsB >= psData.targetWins) { seriesWinner = tB; seriesLoser = tA; }
 
             if (seriesWinner) {
                 log(`🎉 <b>[${rName} 최종 승리]</b> <b>${seriesWinner.name}</b>이(가) ${seriesLoser.name}을(를) 꺾고 다음 라운드로 진출합니다!`);
                 
                 if (psData.currentRound === 'WC') {
-                    psData.wcWinner = seriesWinner.name;
-                    psData.wcLoser = seriesLoser.name;
-
+                    psData.wcWinner = seriesWinner.name; psData.wcLoser = seriesLoser.name;
                     let team3 = psData.top5[2];
                     let wcWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
 
-                    psData.currentRound = 'SEMI';
-                    psData.gameNum = 1;
-                    psData.teamA = team3;
-                    psData.teamB = wcWinnerObj;
-                    psData.winsA = 0;
-                    psData.winsB = 0;
-                    psData.targetWins = 3; 
+                    psData.currentRound = 'SEMI'; psData.gameNum = 1;
+                    psData.teamA = team3; psData.teamB = wcWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 3; 
 
                     log(`⚾ <b>[준플레이오프 개막]</b> 3위 [${team3.name}] vs WC승자 [${wcWinnerObj.name}] (3승 선승제)`);
                     setPipAlert(`준플레이오프 1차전 준비`);
 
                 } else if (psData.currentRound === 'SEMI') {
-                    psData.semiWinner = seriesWinner.name;
-                    psData.semiPoLoser = seriesLoser.name;
-
+                    psData.semiWinner = seriesWinner.name; psData.semiPoLoser = seriesLoser.name;
                     let team2 = psData.top5[1];
                     let semiWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
 
-                    psData.currentRound = 'PO';
-                    psData.gameNum = 1;
-                    psData.teamA = team2;
-                    psData.teamB = semiWinnerObj;
-                    psData.winsA = 0;
-                    psData.winsB = 0;
-                    psData.targetWins = 3; 
+                    psData.currentRound = 'PO'; psData.gameNum = 1;
+                    psData.teamA = team2; psData.teamB = semiWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 3; 
 
                     log(`⚾ <b>[플레이오프 개막]</b> 2위 [${team2.name}] vs 준PO승자 [${semiWinnerObj.name}] (3승 선승제)`);
                     setPipAlert(`플레이오프 1차전 준비`);
 
                 } else if (psData.currentRound === 'PO') {
-                    psData.poWinner = seriesWinner.name;
-                    psData.poLoser = seriesLoser.name;
-
+                    psData.poWinner = seriesWinner.name; psData.poLoser = seriesLoser.name;
                     let team1 = psData.top5[0];
                     let poWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
 
-                    psData.currentRound = 'KS';
-                    psData.gameNum = 1;
-                    psData.teamA = team1;
-                    psData.teamB = poWinnerObj;
-                    psData.winsA = 0;
-                    psData.winsB = 0;
-                    psData.targetWins = 4; 
+                    psData.currentRound = 'KS'; psData.gameNum = 1;
+                    psData.teamA = team1; psData.teamB = poWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 4; 
 
                     log(`👑 <b>[한국시리즈 개막]</b> 1위 [${team1.name}] vs PO승자 [${poWinnerObj.name}] (4승 선승제)`);
                     setPipAlert(`한국시리즈 1차전 준비`);
 
                 } else if (psData.currentRound === 'KS') {
-                    psData.ksWinner = seriesWinner.name;
-                    psData.ksRunnerUp = seriesLoser.name;
-
+                    psData.ksWinner = seriesWinner.name; psData.ksRunnerUp = seriesLoser.name;
                     log(`👑 <b>[한국시리즈 최종 우승]</b> <b>${seriesWinner.name}</b> ${currentYear} KBO 최종 우승!`);
                     setPipAlert(`🏆 한국시리즈 우승: ${seriesWinner.name}!`);
+
+                    let winnerRoster = allTeamRosters[seriesWinner.name] || [];
+                    winnerRoster.forEach(p => {
+                        if (!p.championships) p.championships = [];
+                        p.championships.push(`${currentYear} ${seriesWinner.name}`);
+                    });
 
                     standings.forEach((t, idx) => {
                         let teamRoster = allTeamRosters[t.name] || [];
@@ -2766,16 +2971,10 @@
                         let pInRoom = playersInRoom.find(p => p.teamName === t.name);
 
                         seasonHistory.push({
-                            teamName: t.name,
-                            gmName: pInRoom ? pInRoom.name : '컴퓨터 AI',
-                            isHuman: !!pInRoom,
-                            year: currentYear,
-                            rankNum: idx + 1,
-                            isWinner: (t.name === psData.ksWinner),
-                            isRunnerUp: (t.name === psData.ksRunnerUp),
-                            rankText: rankStr,
-                            power: teamPowerGrade,
-                            level: pInRoom ? `Lv.${gmLevel}` : 'AI'
+                            teamName: t.name, gmName: pInRoom ? pInRoom.name : '컴퓨터 AI',
+                            isHuman: !!pInRoom, year: currentYear, rankNum: idx + 1,
+                            isWinner: (t.name === psData.ksWinner), isRunnerUp: (t.name === psData.ksRunnerUp),
+                            rankText: rankStr, power: teamPowerGrade, level: pInRoom ? `Lv.${gmLevel}` : 'AI'
                         });
                     });
 
@@ -2788,12 +2987,48 @@
         }
     }
 
-    /* v47.0 패치: 별선수(isLegend) 5년 근속 시 포스팅 진출 가능 / AI 재계약 AI 및 엔트리 유지 강화 */
     function prepareOffseason() {
         if (!isHost) return;
 
         resetAllReadies();
         processAITeamLifecycles();
+
+        const humanTeamNames = playersInRoom.map(p => p.teamName);
+
+        KBO_TEAMS.forEach(team => {
+            syncRosterTeamHistory(team);
+
+            if (!humanTeamNames.includes(team)) {
+                let roster = allTeamRosters[team] || [];
+
+                for (let r = 0; r < 4; r++) {
+                    let pos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+                    let age = Math.floor(Math.random() * 4) + 19;
+                    let pot = Math.floor(Math.random() * 3) + 8;
+                    let curr = Math.min(4, Math.max(2, pot - Math.floor(Math.random() * 2) - 3)); 
+                    let rookie = createPlayer(pos, age, curr, pot, false, false, false, "", team);
+                    rookie.salary = 1; rookie.contractYears = 4; rookie.tier = 2; rookie.teamTenure = 0;
+                    rookie.lastChangeReason = "🎯 AI 신인 육성 영입";
+                    recordTeamChange(rookie, team, currentYear);
+                    roster.push(rookie);
+                }
+
+                let foreignCount = roster.filter(p => p.isForeign).length;
+                while (foreignCount < 2) {
+                    let newCurr = 9;
+                    let randomPos = (roster.filter(p => p.isForeign && p.position === '선발').length === 0) ? '선발' : '외야수';
+                    let newForeign = createPlayer(randomPos, Math.floor(Math.random() * 7) + 25, newCurr, 10, true, false, false, "", team);
+                    newForeign.salary = Math.floor(Math.random() * 3) + 10;
+                    newForeign.contractYears = 1; newForeign.tier = 1;
+                    newForeign.lastChangeReason = "🌐 AI 독자 용병 수급";
+                    recordTeamChange(newForeign, team, currentYear);
+                    roster.push(newForeign);
+                    foreignCount++;
+                }
+
+                allTeamRosters[team] = roster;
+            }
+        });
 
         KBO_TEAMS.forEach(team => {
             let teamRoster = allTeamRosters[team] || [];
@@ -2805,7 +3040,6 @@
                 let excess = teamTotalSal - effectiveCap;
                 excessPenalty = Math.round(excess * 0.5 * 10) / 10;
             }
-
             teamDeadCapMap[team] = excessPenalty;
         });
 
@@ -2814,22 +3048,23 @@
             let returningList = [];
 
             postedList.forEach(p => {
-                p.postedMLBYears += 1;
-                p.age += 1;
-                p.current += (Math.floor(Math.random() * 3) - 1);
+                p.postedMLBYears += 1; p.age += 1;
+                if (p.age >= 30) {
+                    let mlbDeclineChance = 0.20 + (p.age - 30) * 0.08;
+                    if (Math.random() < mlbDeclineChance) p.current = Math.max(1, p.current - 1);
+                }
 
                 if (p.current < 12) {
                     p.hasMLBBadge = true;
                     p.lastChangeReason = "🇺🇸 메이저리그 복귀";
+                    recordTeamChange(p, team, currentYear);
                     returningList.push(p);
                     log(`✈️ <b>[메이저리그 복귀]</b> [${team}]의 ${p.name} 선수가 메이저리그 진출 ${p.postedMLBYears}년 만에 친정팀으로 복귀합니다!`);
                 }
             });
 
             postedPlayersMap[team] = postedList.filter(p => p.current >= 12);
-            if (returningList.length > 0) {
-                allTeamRosters[team] = (allTeamRosters[team] || []).concat(returningList);
-            }
+            if (returningList.length > 0) allTeamRosters[team] = (allTeamRosters[team] || []).concat(returningList);
         });
 
         resignCandidatesMap = {};
@@ -2844,22 +3079,18 @@
                 p.age += 1;
                 p.teamTenure += 1;
 
-                if (p.tier === 1 || p.age >= 24) {
-                    p.contractYears -= 1;
-                }
+                if (p.tier === 1 || p.age >= 24) p.contractYears -= 1;
 
-                /* 포스팅 조건: 일반 성골 7년 이상 / 별선수(isLegend) 5년 이상 & current >= 12 (A0 이상) */
                 let isRegularPosting = (!p.isLegend && !p.hasMLBBadge && p.teamTenure >= 7);
                 let isLegendPosting = (p.isLegend && !p.hasMLBBadge && p.teamTenure >= 5);
 
-                if ((isRegularPosting || isLegendPosting) && p.current >= 12) {
-                    postingList.push(p);
-                }
+                if ((isRegularPosting || isLegendPosting) && p.current >= 12) postingList.push(p);
 
                 if (p.contractYears <= 0) {
-                    let baseSal = Math.max(1, Math.round(p.current * 0.60 + Math.random() * 1.0));
-                    
-                    if (p.isLegend || p.hasMLBBadge) baseSal = Math.max(1, Math.round(baseSal * 0.75));
+                    let baseSal = Math.max(1, Math.round(p.current * 0.60));
+                    if (p.current === 7) baseSal = 4;
+                    else if (p.current <= 4) baseSal = 1;
+                    if (p.isLegend || p.hasMLBBadge) baseSal = Math.max(1, Math.round(baseSal * 0.80));
                     
                     if (p.isForeign) {
                         p.resignOptions = [
@@ -2883,14 +3114,13 @@
             postingCandidatesMap[team] = postingList;
 
             if (!playersInRoom.some(plr => plr.teamName === team)) {
-                /* AI 구단은 주전급(능력 6 이상) 적극 재계약으로 약화 차단 */
                 expiredList.forEach(p => {
-                    if (p.current >= 6) {
-                        let opt = p.resignOptions[1] || p.resignOptions[0];
-                        p.salary = opt.salary;
-                        p.contractYears = opt.years;
-                    } else {
-                        allTeamRosters[team] = allTeamRosters[team].filter(x => x.id !== p.id);
+                    let opt = p.resignOptions[1] || p.resignOptions[0];
+                    p.salary = opt.salary;
+                    p.contractYears = opt.years;
+                    if (p.isFA) {
+                        p.isFA = false;
+                        p.isUntradeable = false;
                     }
                 });
                 resignCandidatesMap[team] = [];
@@ -2905,7 +3135,6 @@
         draftPassedMap = {};
         KBO_TEAMS.forEach(t => draftPassedMap[t] = false);
 
-        /* v47.0 패치: 일반 신인 드래프트 풀에서도 A+(13) 잠재력 등장 확률 보장 */
         draftPool = Array.from({length: rookieCount}, (_, idx) => {
             let isLegend = Math.random() < 0.05;
             let legendInfo = LEGEND_NAMES[Math.floor(Math.random() * LEGEND_NAMES.length)];
@@ -2913,20 +3142,25 @@
             let name = isLegend ? legendInfo.name : getRandomKoreanName();
 
             let age = Math.floor(Math.random() * 4) + 19;
-            let curr = isLegend ? Math.floor(Math.random() * 3) + 4 : Math.floor(Math.random() * 3) + 2;
-            let pot = 8;
+            let pot = 8; 
 
+            let rand = Math.random();
             if (isLegend) {
-                pot = Math.floor(Math.random() * 3) + 13;
+                pot = Math.floor(Math.random() * 4) + 12;
+            } else if (rand < 0.45) {
+                pot = 8; 
+            } else if (rand < 0.80) {
+                pot = 9; 
+            } else if (rand < 0.95) {
+                pot = 10; 
             } else {
-                /* 일반 선수도 8 ~ 13 (A+) 범위 잠재력 부여 */
-                pot = Math.floor(Math.random() * 6) + 8;
+                pot = 11; 
             }
 
-            let p = createPlayer(pos, age, curr, pot, false, false, isLegend, name);
-            p.salary = 1;
-            p.contractYears = 4;
-            p.lastChangeReason = "🎯 신인 입단";
+            let curr = Math.min(4, Math.max(2, pot - Math.floor(Math.random() * 2) - 3)); 
+
+            let p = createPlayer(pos, age, curr, pot, false, false, isLegend, name, "");
+            p.salary = 1; p.contractYears = 4; p.lastChangeReason = "🎯 신인 입단";
             return p;
         });
 
@@ -2990,8 +3224,16 @@
             let selectedOpt = player.resignOptions[optionIdx] || player.resignOptions[0];
             player.salary = selectedOpt.salary;
             player.contractYears = selectedOpt.years;
+            
+            if (player.isFA) {
+                player.isFA = false;
+                player.isUntradeable = false;
+                log(`📝 <b>[FA 재계약 체결]</b> ${player.name} 선수가 구단과 재계약을 맺어 FA 신분 및 제약이 해제되었습니다.`);
+            }
         } else {
+            // 재계약 거절 및 방출 처리
             allTeamRosters[teamName] = (allTeamRosters[teamName] || []).filter(p => p.id !== playerId);
+            log(`👋 <b>[재계약 거절/방출]</b> [${teamName}] 구단이 ${player.name} 선수와의 재계약을 포기하고 방출 처리했습니다.`);
         }
 
         resignCandidatesMap[teamName] = candidates.filter(p => p.id !== playerId);
@@ -3008,9 +3250,7 @@
             for (let team of humanOrderTeams) {
                 if (draftPassedMap[team]) continue;
                 let picks = draftPicksCountMap[team] || 0;
-                if (picks <= round) {
-                    return team;
-                }
+                if (picks <= round) return team;
             }
         }
         return null;
@@ -3020,12 +3260,12 @@
         let player = draftPool.find(p => p.id === playerId);
         if (!player) return;
 
-        player.salary = 1;
-        player.contractYears = 4;
-        player.tier = 2;
-        player.teamTenure = 0;
-        player.seasonStartCurrent = player.current;
+        player.salary = 1; player.contractYears = 4; player.tier = 2;
+        player.teamTenure = 0; player.seasonStartCurrent = player.current;
         player.lastChangeReason = "🎯 드래프트 지명 입단";
+        
+        recordTeamChange(player, teamName, currentYear);
+
         let roster = allTeamRosters[teamName] || [];
         roster.push(player);
 
@@ -3048,8 +3288,7 @@
 
         if (confirm("신인 드래프트를 포기하시겠습니까? 이번 오프시즌 동안 더 이상 신인을 지명하지 않고 다음 플레이어에게 턴이 넘어갑니다.")) {
             if (isHost) {
-                processDraftPass(myTeamName);
-                broadcastGameState();
+                processDraftPass(myTeamName); broadcastGameState();
             } else {
                 hostConn.send({ type: 'ACTION_DRAFT_PASS', teamName: myTeamName });
             }
@@ -3066,8 +3305,7 @@
         addGMExp(2);
 
         if (isHost) {
-            processDraftPick(myTeamName, playerId);
-            broadcastGameState();
+            processDraftPick(myTeamName, playerId); broadcastGameState();
         } else {
             hostConn.send({ type: 'ACTION_DRAFT_PICK', teamName: myTeamName, playerId });
         }
@@ -3079,7 +3317,7 @@
             postingContainer.innerHTML = '';
             const myPostings = postingCandidatesMap[myTeamName] || [];
             if (myPostings.length === 0) {
-                postingContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid var(--border-color);">현재 해외 포스팅 진출을 요청한 선수가 없습니다.</p>`;
+                postingContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid var(--border-color);">현재 해외 포스팅을 요청한 선수가 없습니다.</p>`;
             } else {
                 myPostings.forEach(p => {
                     const badgesHTML = getPlayerBadgesHTML(p);
@@ -3087,7 +3325,7 @@
 
                     postingContainer.innerHTML += `
                         <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <div>
+                            <div class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                                 <b style="color:var(--accent-blue); font-size:0.95rem;">✈️ 메이저리그 ${tagTitle}</b><br>
                                 <span style="font-size:0.88rem;"><b>${p.position} ${p.name}</b>${badgesHTML} (${p.age}세, 구단 ${p.teamTenure}년 근속) - 현재 능력: ${getGradeBadgeHTML(p.current)}</span>
                             </div>
@@ -3106,7 +3344,7 @@
             resignList.innerHTML = '';
             const myCandidates = resignCandidatesMap[myTeamName] || [];
             if (myCandidates.length === 0) {
-                resignList.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);">현재 재계약 협상 대상 선수가 없습니다.</td></tr>`;
+                resignList.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">현재 재계약 협상 대상 선수가 없습니다.</td></tr>`;
             } else {
                 myCandidates.forEach(p => {
                     const badgesHTML = getPlayerBadgesHTML(p);
@@ -3117,22 +3355,16 @@
                     if (opt2) {
                         optionsBtns += ` <button class="btn btn-info" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', 1, true)">${opt2.years}년 / ${opt2.salary}억</button>`;
                     }
+                    optionsBtns += ` <button class="btn btn-danger" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', -1, false)">❌ 방출</button>`;
 
                     resignList.innerHTML += `
-                        <tr>
+                        <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                             <td>${p.position}</td>
                             <td><b>${p.name}</b>${badgesHTML}</td>
                             <td>${p.age}세</td>
                             <td>${getGradeBadgeHTML(p.current)}</td>
                             <td>${getGradeBadgeHTML(p.potential)}</td>
-                            <td>
-                                <div style="display:flex; gap:4px; justify-content:center;">
-                                    ${optionsBtns}
-                                </div>
-                            </td>
-                            <td>
-                                <button class="btn btn-danger" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', -1, false)">거절(방출)</button>
-                            </td>
+                            <td><div style="display:flex; gap:4px; justify-content:center;">${optionsBtns}</div></td>
                         </tr>
                     `;
                 });
@@ -3144,9 +3376,7 @@
         const currentTurnTeam = getCurrentDraftTurnTeam();
         const isMyTurn = (currentTurnTeam === myTeamName);
 
-        if (passBtnEl) {
-            passBtnEl.disabled = !isMyTurn;
-        }
+        if (passBtnEl) passBtnEl.disabled = !isMyTurn;
 
         if (draftPicksEl) {
             let orderTeams = standings.length > 0 ? [...standings].reverse().map(t => t.name) : KBO_TEAMS;
@@ -3177,7 +3407,7 @@
                     let btnText = isMyTurn ? '지명하기' : (currentTurnTeam ? `[${currentTurnTeam}] 턴` : '지명 완료');
 
                     draftList.innerHTML += `
-                        <tr>
+                        <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                             <td>${p.position}</td>
                             <td><b>${p.name}</b>${badgesHTML}</td>
                             <td>${p.age}세</td>
@@ -3201,41 +3431,33 @@
             let accruedPenalty = teamDeadCapMap[team] || 0.0;
             teamLastSeasonCapPenaltyMap[team] = accruedPenalty;
             teamDeadCapMap[team] = 0.0;
+            emergencyRefillCountMap[team] = 0; 
         });
 
         KBO_TEAMS.forEach(team => {
             if (allTeamRosters[team]) {
                 allTeamRosters[team] = allTeamRosters[team].filter(p => p.contractYears > 0);
-                allTeamRosters[team].forEach(p => {
-                    p.seasonStartCurrent = p.current;
-                });
+                allTeamRosters[team].forEach(p => { p.seasonStartCurrent = p.current; });
             }
         });
 
         currentYear += 1;
         phase = 'Q1_READY';
-        faSignedCountMap = {};
-        foreignSignedCountMap = {};
-        draftPicksCountMap = {};
-        draftPassedMap = {};
-        directTradeUsedMap = {};
-        incomingTradeProposals = [];
-        KBO_TEAMS.forEach(t => {
-            draftPicksCountMap[t] = 0;
-            draftPassedMap[t] = false;
-            foreignSignedCountMap[t] = 0;
-            directTradeUsedMap[t] = false;
+        faSignedCountMap = {}; foreignSignedCountMap = {}; draftPicksCountMap = {};
+        draftPassedMap = {}; directTradeUsedMap = {}; incomingTradeProposals = [];
+        KBO_TEAMS.forEach(t => { 
+            draftPicksCountMap[t] = 0; draftPassedMap[t] = false; foreignSignedCountMap[t] = 0; directTradeUsedMap[t] = false; 
+            syncRosterTeamHistory(t); 
         });
 
         foreignDraftOrder = [...KBO_TEAMS].sort(() => Math.random() - 0.5);
 
         generateMarketPool();
         resetStandings();
-        tradeProposalsMap = {};
-        resignCandidatesMap = {};
+        tradeProposalsMap = {}; resignCandidatesMap = {};
         psData = { top5: [], currentRound: 'WC', gameNum: 1, teamA: null, teamB: null, winsA: 0, winsB: 0, targetWins: 0, wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null, poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null };
 
-        setPipAlert(`${currentYear}년 시즌 개막 (상대 전력 ? 은폐)`);
+        setPipAlert(`${currentYear}년 시즌 개막`);
         broadcastGameState();
         switchTab('season');
         log(`<b>[${currentYear}년 시즌 개막]</b> 새로운 시즌이 시작되었습니다!`);
@@ -3244,11 +3466,18 @@
     function renderStandings() {
         const list = document.getElementById('standings-list');
         list.innerHTML = '';
-        const isQ1Blind = (phase === 'Q1_READY');
 
         standings.forEach((t, idx) => {
             const isMyTeam = (t.name === myTeamName);
-            const powerDisplay = (isQ1Blind && !isMyTeam) ? getGradeBadgeHTML('?') : getGradeBadgeHTML(valToGrade(t.powerNum));
+            const powerDisplay = getGradeBadgeHTML(valToGrade(t.powerNum));
+
+            let roster = allTeamRosters[t.name] || [];
+            let totalSal = roster.reduce((s, p) => s + p.salary, 0);
+            let effectiveCap = getEffectiveCap(t.name);
+            
+            let isHumanTeam = playersInRoom.some(p => p.teamName === t.name);
+            let capDisplay = isHumanTeam ? `${totalSal}억 / ${effectiveCap}억` : '-';
+            let salStyle = (isHumanTeam && totalSal > effectiveCap) ? 'color:var(--accent-red); font-weight:bold;' : 'color:var(--text-dark);';
 
             list.innerHTML += `
                 <tr style="${isMyTeam ? 'background-color: #f0f9ff; font-weight: bold;' : ''}">
@@ -3256,6 +3485,7 @@
                     <td><b>${t.name}</b></td>
                     <td>${t.gmInfo || '컴퓨터 AI'}</td>
                     <td>${powerDisplay}</td>
+                    <td style="${salStyle}">${capDisplay}</td>
                     <td>${t.wins}</td>
                     <td>${t.losses}</td>
                     <td>${t.draws}</td>
@@ -3277,11 +3507,8 @@
     }
 
     function renderHistory() {
-        if (currentHistorySubTab === 'seasons') {
-            renderHistorySeasons();
-        } else {
-            renderHistoryStats();
-        }
+        if (currentHistorySubTab === 'seasons') renderHistorySeasons();
+        else renderHistoryStats();
     }
 
     function renderHistorySeasons() {
@@ -3323,16 +3550,10 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>순위</th>
-                                    <th>구단명</th>
-                                    <th>단장명</th>
-                                    <th>최종 포스트시즌 성적</th>
-                                    <th>당시 팀 전력</th>
+                                    <th>순위</th><th>구단명</th><th>단장명</th><th>최종 포스트시즌 성적</th><th>당시 팀 전력</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${tableRows}
-                            </tbody>
+                            <tbody>${tableRows}</tbody>
                         </table>
                     </div>
                 </div>
@@ -3353,17 +3574,8 @@
         seasonHistory.forEach(h => {
             let key = `${h.teamName}_${h.gmName}`;
             if (!statsMap[key]) {
-                statsMap[key] = {
-                    teamName: h.teamName,
-                    gmName: h.gmName,
-                    isHuman: h.isHuman,
-                    seasons: 0,
-                    wins: 0,
-                    runnerUps: 0,
-                    totalRank: 0
-                };
+                statsMap[key] = { teamName: h.teamName, gmName: h.gmName, isHuman: h.isHuman, seasons: 0, wins: 0, runnerUps: 0, totalRank: 0 };
             }
-
             statsMap[key].seasons += 1;
             if (h.isWinner) statsMap[key].wins += 1;
             if (h.isRunnerUp) statsMap[key].runnerUps += 1;
@@ -3397,13 +3609,8 @@
         win.classList.remove('minimized');
     }
 
-    function closePipWindow() {
-        document.getElementById('pip-window').style.display = 'none';
-    }
-
-    function togglePipMinimize() {
-        document.getElementById('pip-window').classList.toggle('minimized');
-    }
+    function closePipWindow() { document.getElementById('pip-window').style.display = 'none'; }
+    function togglePipMinimize() { document.getElementById('pip-window').classList.toggle('minimized'); }
 
     const pipWin = document.getElementById('pip-window');
     const pipHeader = document.getElementById('pip-header');
@@ -3411,30 +3618,21 @@
 
     if (pipHeader) {
         pipHeader.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
+            isDragging = true; startX = e.clientX; startY = e.clientY;
             const rect = pipWin.getBoundingClientRect();
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            pipWin.style.left = initialLeft + 'px';
-            pipWin.style.top = initialTop + 'px';
-            pipWin.style.right = 'auto';
-            pipWin.style.bottom = 'auto';
+            initialLeft = rect.left; initialTop = rect.top;
+            pipWin.style.left = initialLeft + 'px'; pipWin.style.top = initialTop + 'px';
+            pipWin.style.right = 'auto'; pipWin.style.bottom = 'auto';
             e.preventDefault();
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            pipWin.style.left = (initialLeft + dx) + 'px';
-            pipWin.style.top = (initialTop + dy) + 'px';
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            pipWin.style.left = (initialLeft + dx) + 'px'; pipWin.style.top = (initialTop + dy) + 'px';
         });
 
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
+        document.addEventListener('mouseup', () => { isDragging = false; });
     }
 
     function renderPipUI() {
@@ -3443,11 +3641,7 @@
             chipsContainer.innerHTML = '';
             playersInRoom.forEach(p => {
                 const isReady = !!p.isSeasonReady;
-                chipsContainer.innerHTML += `
-                    <div class="multi-player-chip ${isReady ? 'ready' : 'not-ready'}">
-                        ${isReady ? '⭕' : '❌'} <b>${p.name}</b> (${p.teamName})
-                    </div>
-                `;
+                chipsContainer.innerHTML += `<div class="multi-player-chip ${isReady ? 'ready' : 'not-ready'}">${isReady ? '⭕' : '❌'} <b>${p.name}</b> (${p.teamName})</div>`;
             });
         }
 
@@ -3455,8 +3649,7 @@
         if (pipReadyBtn) {
             pipReadyBtn.innerText = mySeasonReady ? "내 준비 (⭕ O)" : "내 준비 (❌ X)";
             pipReadyBtn.className = mySeasonReady ? "btn btn-success" : "btn btn-warning";
-            pipReadyBtn.style.fontSize = "0.7rem";
-            pipReadyBtn.style.padding = "2px 6px";
+            pipReadyBtn.style.fontSize = "0.7rem"; pipReadyBtn.style.padding = "2px 6px";
         }
 
         const teamSelect = document.getElementById('pip-team-select');
@@ -3496,8 +3689,6 @@
             return;
         }
 
-        const isQ1Blind = (phase === 'Q1_READY' && selectedTeam !== myTeamName);
-
         lineupContainer.innerHTML = '';
         tier1Roster.forEach(p => {
             const role = getSlotRoleForPlayer(roster, p);
@@ -3506,7 +3697,7 @@
             else if (role === '후보') roleBadge = `<span class="slot-badge-backup" style="font-size:0.65rem;">🔵</span>`;
             else if (role === '예비') roleBadge = `<span class="slot-badge-reserve" style="font-size:0.65rem;">🟣</span>`;
 
-            const gradeDisplay = isQ1Blind ? getGradeBadgeHTML('?') : getGradeBadgeHTML(p.current);
+            const gradeDisplay = getGradeBadgeHTML(p.current);
             const badgesHTML = getPlayerBadgesHTML(p);
 
             let startVal = p.seasonStartCurrent || p.current;
@@ -3517,7 +3708,7 @@
             else diffText = `<span style="color:#94a3b8; font-size:0.72rem; margin-left:3px;">(-)</span>`;
 
             lineupContainer.innerHTML += `
-                <div class="pip-lineup-item">
+                <div class="pip-lineup-item player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
                     <span>${roleBadge}<b>${p.position}</b> ${p.name}${badgesHTML} (${p.age}세) ${diffText}</span>
                     <span>${gradeDisplay} <b>${p.salary}억</b></span>
                 </div>
@@ -3540,30 +3731,18 @@
             let startVal = p.seasonStartCurrent || p.current;
             let diff = p.current - startVal;
             allLogs.push({
-                year: currentYear,
-                qNum: '시즌종합',
-                player: p,
-                startVal,
-                currVal: p.current,
-                potVal: p.potential,
-                diff,
-                reason: p.lastChangeReason || "🔄 기량 유지",
-                tier: p.tier
+                year: currentYear, qNum: '시즌종합', player: p, startVal,
+                currVal: p.current, potVal: p.potential, diff,
+                reason: p.lastChangeReason || "🔄 기량 유지", tier: p.tier
             });
 
             if (p.growthHistory && p.growthHistory.length > 0) {
                 p.growthHistory.forEach(h => {
                     if (h.year !== currentYear) {
                         allLogs.push({
-                            year: h.year,
-                            qNum: `Q${h.qNum}`,
-                            player: p,
-                            startVal: h.oldCurr,
-                            currVal: h.newCurr,
-                            potVal: h.newPot,
-                            diff: h.newCurr - h.oldCurr,
-                            reason: h.reason,
-                            tier: h.tier
+                            year: h.year, qNum: `Q${h.qNum}`, player: p,
+                            startVal: h.oldCurr, currVal: h.newCurr, potVal: h.newPot,
+                            diff: h.newCurr - h.oldCurr, reason: h.reason, tier: h.tier
                         });
                     }
                 });
@@ -3605,7 +3784,7 @@
                 const badgesHTML = getPlayerBadgesHTML(p);
 
                 container.innerHTML += `
-                    <div class="pip-lineup-item" style="flex-direction:column; align-items:flex-start; gap:2px; margin-bottom:4px;">
+                    <div class="pip-lineup-item player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')" style="flex-direction:column; align-items:flex-start; gap:2px; margin-bottom:4px;">
                         <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                             <span>${tierTag} <b>${p.position}</b> ${p.name}${badgesHTML} (${p.age}세)</span>
                             <span>${diffBadge}</span>
@@ -3623,198 +3802,161 @@
     function updateUI() {
         const myInfo = playersInRoom.find(p => p.peerId === myPeerId);
         const actualGMName = myInfo ? myInfo.name : myGMName;
-        document.getElementById('team-gm-title').innerText = `${myTeamName} (${actualGMName} 단장)`;
+        document.getElementById('team-gm-title').innerText = `${myTeamName} ${actualGMName} 단장`;
 
-        const yearEl = document.getElementById('current-year');
-        if (yearEl) yearEl.innerText = currentYear;
+        const phaseDescMap = {
+            'Q1_READY': '📌 시즌 상태: 1분기 준비 중 (1~36경기)',
+            'TRADE_1': '📌 시즌 상태: 1분기 종료 / 36G 트레이드 마감',
+            'TRADE_2': '📌 시즌 상태: 2분기 종료 / 72G 인간 단장 직접 트레이드 가능',
+            'TRADE_3': '📌 시즌 상태: 3분기 종료 / 108G 트레이드 마감',
+            'PS_READY': '📌 시즌 상태: 정규시즌 종료 / 포스트시즌 준비',
+            'PS_IN_PROGRESS': '📌 시즌 상태: 🏆 포스트시즌 진행 중',
+            'OFFSEASON_READY': '📌 시즌 상태: 🏆 시즌 종료 / 오프시즌 진입 대기',
+            'NEW_SEASON_READY': '📌 시즌 상태: 오프시즌 진행 중 / 차기 시즌 준비'
+        };
+        document.getElementById('season-phase').innerText = phaseDescMap[phase] || `📌 시즌 상태: ${phase}`;
 
-        const myRoster = getMyRoster();
-        const powerInfo = calculateTeamPowerBreakdown(myRoster);
-
-        document.getElementById('overall-power-grade').innerHTML = getGradeBadgeHTML(powerInfo.overallGrade);
-        document.getElementById('pw-starter').innerHTML = getGradeBadgeHTML(powerInfo.starterGrade);
-        document.getElementById('pw-reliever').innerHTML = getGradeBadgeHTML(powerInfo.relieverGrade);
-        document.getElementById('pw-catcher').innerHTML = getGradeBadgeHTML(powerInfo.catcherGrade);
-        document.getElementById('pw-infield').innerHTML = getGradeBadgeHTML(powerInfo.infieldGrade);
-        document.getElementById('pw-outfield').innerHTML = getGradeBadgeHTML(powerInfo.outfieldGrade);
-
+        document.getElementById('current-year').innerText = currentYear;
         document.getElementById('gm-level-text').innerText = `Lv.${gmLevel}`;
         document.getElementById('gm-exp-text').innerText = `${gmExp}/100`;
 
-        document.getElementById('tier1-count').innerText = myRoster.filter(p => p.tier === 1).length;
-        
-        let effectiveCap = getEffectiveCap(myTeamName);
-        let baseCap = TEAM_MARKET_SIZES[myTeamName] ? TEAM_MARKET_SIZES[myTeamName].baseCap : 100;
+        const sizeInfo = TEAM_MARKET_SIZES[myTeamName] || { size: "중형", baseCap: 100 };
+        document.getElementById('market-size-text').innerText = `${sizeInfo.size}`;
 
-        document.getElementById('market-size-text').innerText = `${TEAM_MARKET_SIZES[myTeamName].size} (기본 ${baseCap}억)`;
+        const myRoster = getMyRoster();
+        const totalSalary = getMyTotalSalary();
+        const effectiveCap = getEffectiveCap(myTeamName);
+
+        document.getElementById('total-salary').innerText = totalSalary;
         document.getElementById('salary-cap-text').innerText = effectiveCap;
 
-        let myTotalSal = getMyTotalSalary();
-        const salTextEl = document.getElementById('total-salary');
-        salTextEl.innerText = myTotalSal;
-
-        if (myTotalSal > effectiveCap * 1.3) {
-            salTextEl.style.color = '#ef4444';
-            salTextEl.style.fontWeight = 'bold';
-        } else if (myTotalSal > effectiveCap) {
-            salTextEl.style.color = '#f59e0b';
-            salTextEl.style.fontWeight = 'bold';
-        } else {
-            salTextEl.style.color = '#38bdf8';
+        const salaryEl = document.getElementById('total-salary');
+        if (salaryEl) {
+            if (totalSalary > effectiveCap * 1.3) salaryEl.style.color = '#ef4444';
+            else if (totalSalary > effectiveCap) salaryEl.style.color = '#f59e0b';
+            else salaryEl.style.color = '#10b981';
         }
 
-        let myDeadCap = teamDeadCapMap[myTeamName] || 0.0;
-        document.getElementById('dead-cap-text').innerText = myDeadCap.toFixed(1);
+        const deadCapVal = teamDeadCapMap[myTeamName] || 0.0;
+        document.getElementById('dead-cap-text').innerText = `${deadCapVal.toFixed(1)}`;
 
-        const readyStatusList = document.getElementById('season-ready-status-list');
-        if (readyStatusList) {
-            readyStatusList.innerHTML = '';
-            playersInRoom.forEach(p => {
-                const isReady = !!p.isSeasonReady;
-                readyStatusList.innerHTML += `
-                    <div class="multi-player-chip ${isReady ? 'ready' : 'not-ready'}">
-                        ${isReady ? '⭕ O' : '❌ X'} <b>${p.name}</b> (${p.teamName})
-                    </div>
-                `;
-            });
-        }
+        const tier1Count = myRoster.filter(p => p.tier === 1).length;
+        document.getElementById('tier1-count').innerText = tier1Count;
 
-        const readyBtn = document.getElementById('toggle-season-ready-btn');
-        if (readyBtn) {
-            readyBtn.innerText = mySeasonReady ? "✋ 내 준비 상태 변경 (⭕ O ➔ ❌ X)" : "✋ 내 준비 상태 변경 (❌ X ➔ ⭕ O)";
-            readyBtn.className = mySeasonReady ? "btn btn-success" : "btn btn-warning";
-        }
+        const pw = calculateTeamPowerBreakdown(myRoster);
+        document.getElementById('overall-power-grade').innerHTML = getGradeBadgeHTML(pw.overallGrade);
+        document.getElementById('pw-starter').innerHTML = getGradeBadgeHTML(pw.starterGrade);
+        document.getElementById('pw-reliever').innerHTML = getGradeBadgeHTML(pw.relieverGrade);
+        document.getElementById('pw-catcher').innerHTML = getGradeBadgeHTML(pw.catcherGrade);
+        document.getElementById('pw-infield').innerHTML = getGradeBadgeHTML(pw.infieldGrade);
+        document.getElementById('pw-outfield').innerHTML = getGradeBadgeHTML(pw.outfieldGrade);
 
+        updateSeasonStepBanner();
+
+        renderRoster();
+        renderMarket();
+        renderTradeBlock();
+        initDirectTradeUI();
+        updateInboxUI();
+        renderOffseason();
+        renderStandings();
+        renderHistory();
         renderPipUI();
+    }
 
-        const foreignOrderEl = document.getElementById('foreign-order-text');
-        if (foreignOrderEl) {
-            let orderList = foreignDraftOrder && foreignDraftOrder.length > 0 ? foreignDraftOrder : KBO_TEAMS;
-            let humanTeams = playersInRoom.map(p => p.teamName);
-            let humanOrderList = orderList.filter(t => humanTeams.includes(t));
-
-            foreignOrderEl.innerHTML = humanOrderList.map((t, idx) => {
-                let cnt = foreignSignedCountMap[t] || 0;
-                let isMy = (t === myTeamName) ? 'color:var(--accent-blue); font-weight:bold;' : '';
-                return `<span style="${isMy}">${idx+1}순 ${t} [${cnt}/2명]</span>`;
-            }).join(' ➔ ');
-        }
-
-        const phaseTextMap = {
-            'Q1_READY': '📌 시즌 상태: 1분기 준비 중 (1~36경기 / 상대 전력 ? 은폐)',
-            'TRADE_1': '📌 시즌 상태: 1분기 종료 (36경기 완료) - 2분기 진행 가능',
-            'TRADE_2': '📌 시즌 상태: 2분기 종료 (72경기 완료) - 3분기 진행 가능',
-            'TRADE_3': '📌 시즌 상태: 3분기 종료 (108경기 완료) - 4분기 진행 가능',
-            'PS_READY': '📌 시즌 상태: 정규시즌 종료 - 포스트시즌 개막 가능',
-            'PS_IN_PROGRESS': '📌 시즌 상태: 포스트시즌 1차전씩 진행 중',
-            'OFFSEASON_READY': '📌 시즌 상태: 포스트시즌 종료 - 오프시즌 진입 가능',
-            'NEW_SEASON_READY': '📌 시즌 상태: 오프시즌 완료 - 다음 시즌 개막 가능'
-        };
-
-        const phaseDescMap = {
-            'Q1_READY': '아래 [1. 1분기 진행] 버튼을 눌러 개막전 및 정규시즌 36경기를 시뮬레이션하세요.',
-            'TRADE_1': '1분기가 종료되었습니다. 필요시 트레이드를 검토 후 [2. 2분기 진행] 버튼을 누르세요.',
-            'TRADE_2': '2분기가 종료되었습니다. 유저/AI 트레이드 진행 후 [3. 3분기 진행] 버튼을 누르세요.',
-            'TRADE_3': '3분기가 종료되었습니다. 정규시즌 완주를 위해 [4. 4분기 진행] 버튼을 누르세요.',
-            'PS_READY': '144경기 정규시즌이 완료되었습니다. [🏆 포스트시즌 진행] 버튼을 클릭하세요.',
-            'PS_IN_PROGRESS': '포스트시즌 각 라운드가 진행 중입니다. 승부를 확정짓기 위해 버튼을 클릭하세요.',
-            'OFFSEASON_READY': '포스트시즌이 최종 종료되었습니다. [오프시즌 진입] 버튼을 눌러 계약 협상을 시작하세요.',
-            'NEW_SEASON_READY': '재계약 및 드래프트가 완료되었습니다. [다음 시즌 개막] 버튼을 누르세요.'
-        };
-
-        const phaseEl = document.getElementById('season-phase');
-        if (phaseEl && phaseTextMap[phase]) phaseEl.innerText = phaseTextMap[phase];
-
-        const bannerTitleEl = document.getElementById('banner-phase-title');
-        const bannerDescEl = document.getElementById('banner-phase-desc');
-        if (bannerTitleEl && phaseTextMap[phase]) bannerTitleEl.innerText = phaseTextMap[phase];
-        if (bannerDescEl && phaseDescMap[phase]) bannerDescEl.innerText = phaseDescMap[phase];
+    function updateSeasonStepBanner() {
+        const titleEl = document.getElementById('banner-phase-title');
+        const descEl = document.getElementById('banner-phase-desc');
+        if (!titleEl || !descEl) return;
 
         const simQ1Btn = document.getElementById('sim-q1-btn');
-        const trade1Btn = document.getElementById('trade-btn-1');
+        const tradeBtn1 = document.getElementById('trade-btn-1');
         const simQ2Btn = document.getElementById('sim-q2-btn');
-        const trade2Btn = document.getElementById('trade-btn-2');
+        const tradeBtn2 = document.getElementById('trade-btn-2');
         const simQ3Btn = document.getElementById('sim-q3-btn');
-        const trade3Btn = document.getElementById('trade-btn-3');
+        const tradeBtn3 = document.getElementById('trade-btn-3');
         const simQ4Btn = document.getElementById('sim-q4-btn');
         const psBtn = document.getElementById('ps-btn');
         const nextYearBtn = document.getElementById('next-year-btn');
         const startNewSeasonBtn = document.getElementById('start-new-season-btn');
 
-        if (simQ1Btn) simQ1Btn.disabled = (phase !== 'Q1_READY' || !isHost);
-        if (trade1Btn) trade1Btn.disabled = (phase !== 'TRADE_1');
-        if (simQ2Btn) simQ2Btn.disabled = (phase !== 'TRADE_1' || !isHost);
-        if (trade2Btn) trade2Btn.disabled = (phase !== 'TRADE_2');
-        if (simQ3Btn) simQ3Btn.disabled = (phase !== 'TRADE_2' || !isHost);
-        if (trade3Btn) trade3Btn.disabled = (phase !== 'TRADE_3');
-        if (simQ4Btn) simQ4Btn.disabled = (phase !== 'TRADE_3' || !isHost);
-        
-        if (psBtn) {
-            let isPSPhase = (phase === 'PS_READY' || phase === 'PS_IN_PROGRESS');
-            psBtn.disabled = (!isPSPhase || !isHost);
-            if (phase === 'PS_READY') {
-                psBtn.innerText = '🏆 포스트시즌 개막';
-            } else if (phase === 'PS_IN_PROGRESS') {
-                let roundNames = { 'WC': '와일드카드', 'SEMI': '준PO', 'PO': '플레이오프', 'KS': '한국시리즈' };
-                let rName = roundNames[psData.currentRound] || 'PS';
-                let teamAName = psData.teamA ? psData.teamA.name : '';
-                let teamBName = psData.teamB ? psData.teamB.name : '';
-                psBtn.innerText = `⚾ ${rName} ${psData.gameNum}차전 (${teamAName} ${psData.winsA}:${psData.winsB} ${teamBName})`;
-            } else {
-                psBtn.innerText = '🏆 포스트시즌 완료';
-            }
+        [simQ1Btn, tradeBtn1, simQ2Btn, tradeBtn2, simQ3Btn, tradeBtn3, simQ4Btn, psBtn, nextYearBtn, startNewSeasonBtn].forEach(b => {
+            if (b) b.disabled = true;
+        });
+
+        if (phase === 'Q1_READY') {
+            titleEl.innerText = '📌 1단계: 1분기 진행 준비 (1~36G)';
+            descEl.innerText = '[1. 1분기 진행] 버튼을 클릭해 36경기를 소화하세요.';
+            if (simQ1Btn) simQ1Btn.disabled = false;
+        } else if (phase === 'TRADE_1') {
+            titleEl.innerText = '📌 2단계: 1분기 종료 / 트레이드 검토 (36G)';
+            descEl.innerText = '컴퓨터 AI 구단과의 트레이드 오퍼를 확인하고 [2. 2분기 진행] 버튼을 누르세요.';
+            if (tradeBtn1) tradeBtn1.disabled = false;
+            if (simQ2Btn) simQ2Btn.disabled = false;
+        } else if (phase === 'TRADE_2') {
+            titleEl.innerText = '📌 3단계: 2분기 종료 / 유저 직접 트레이드 가능 (72G)';
+            descEl.innerText = '다른 인간 단장과 직접 트레이드를 보낼 수 있는 유일한 기회입니다! 검토 후 [3. 3분기 진행]을 누르세요.';
+            if (tradeBtn2) tradeBtn2.disabled = false;
+            if (simQ3Btn) simQ3Btn.disabled = false;
+        } else if (phase === 'TRADE_3') {
+            titleEl.innerText = '📌 4단계: 3분기 종료 / 최종 트레이드 마감 (108G)';
+            descEl.innerText = '이번 시즌 마지막 트레이드를 마무리하고 [4. 4분기 진행]을 눌러 정규시즌을 완주하세요.';
+            if (tradeBtn3) tradeBtn3.disabled = false;
+            if (simQ4Btn) simQ4Btn.disabled = false;
+        } else if (phase === 'PS_READY' || phase === 'PS_IN_PROGRESS') {
+            titleEl.innerText = '🏆 5단계: 정규시즌 종료 / 포스트시즌 진행';
+            descEl.innerText = '[포스트시즌 진행] 버튼을 반복 클릭하여 와일드카드부터 한국시리즈 우승 구단을 가리세요.';
+            if (psBtn) psBtn.disabled = false;
+        } else if (phase === 'OFFSEASON_READY') {
+            titleEl.innerText = '🎉 6단계: 한국시리즈 종료 / 오프시즌 진입';
+            descEl.innerText = '[오프시즌 진입] 버튼을 눌러 재계약 협상 및 신인 드래프트 단계로 진입하세요.';
+            if (nextYearBtn) nextYearBtn.disabled = false;
+        } else if (phase === 'NEW_SEASON_READY') {
+            titleEl.innerText = '🎯 7단계: 오프시즌 마무리 / 다음 시즌 개막';
+            descEl.innerText = '모든 재계약과 드래프트를 마친 후 [다음 시즌 개막] 버튼을 누르면 연도가 넘어갑니다.';
+            if (startNewSeasonBtn) startNewSeasonBtn.disabled = false;
         }
-
-        if (nextYearBtn) nextYearBtn.disabled = (phase !== 'OFFSEASON_READY' || !isHost);
-        if (startNewSeasonBtn) startNewSeasonBtn.disabled = (phase !== 'NEW_SEASON_READY' || !isHost);
-
-        renderRoster();
-        renderMarket();
-        renderStandings();
-        renderTradeBlock();
-        initDirectTradeUI();
-        updateInboxUI();
-        renderOffseason();
-        renderHistory();
     }
 
     function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('nav .nav-btn').forEach(btn => btn.classList.remove('active'));
 
-        const targetContent = document.getElementById(tabId);
-        if (targetContent) targetContent.classList.add('active');
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
 
-        const navBtn = document.querySelector(`nav button[onclick*="'${tabId}'"]`);
-        if (navBtn) navBtn.classList.add('active');
-
-        if (tabId === 'userTrade') {
-            initDirectTradeUI();
-            updateInboxUI();
-        } else if (tabId === 'history') {
-            renderHistory();
+        if (event && event.target && event.target.tagName === 'BUTTON') {
+            event.target.classList.add('active');
         }
+
+        if (tabId === 'userTrade') initDirectTradeUI();
     }
 
-    function generateSaveCode() {
-        const data = getFullGameStatePayload();
-        const jsonStr = JSON.stringify(data);
-        const encoded = btoa(encodeURIComponent(jsonStr));
-        document.getElementById('export-code-area').value = encoded;
+    async function generateSaveCode() {
+        const fullData = getFullGameStatePayload();
+        const jsonStr = JSON.stringify(fullData);
+        const compressedBase64 = await compressSaveData(jsonStr);
+        document.getElementById('export-code-area').value = compressedBase64;
+        alert("Deflate 초압축 세이브 코드가 생성되었습니다!");
     }
 
-    function loadSaveCode() {
+    async function loadSaveCode() {
+        const code = document.getElementById('import-code-area').value.trim();
+        if (!code) { alert("세이브 코드를 입력해주세요."); return; }
         try {
-            const encoded = document.getElementById('import-code-area').value.trim();
-            if (!encoded) return;
-            const jsonStr = decodeURIComponent(atob(encoded));
-            const data = JSON.parse(jsonStr);
-            syncGameState(data);
+            const decompressedJson = await decompressSaveData(code);
+            const loadedData = JSON.parse(decompressedJson);
+            syncGameState(loadedData);
+            document.getElementById('start-modal').style.display = 'none';
             alert("세이브 데이터를 성공적으로 불러왔습니다!");
-        } catch (e) {
-            alert("올바르지 않은 세이브 코드입니다.");
+        } catch(e) {
+            alert("유효하지 않거나 손상된 세이브 코드입니다.");
         }
     }
+
+    window.onload = function() {
+        salaryCap = TEAM_MARKET_SIZES[myTeamName].baseCap;
+    };
 </script>
 </body>
 </html>
