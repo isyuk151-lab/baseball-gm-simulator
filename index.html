@@ -1,0 +1,3981 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단장 멀티v1</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-main: #f8fafc;
+            --surface-card: #ffffff;
+            --primary: #0f172a;
+            --primary-light: #1e293b;
+            --accent-blue: #2563eb;
+            --accent-gold: #d97706;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --radius-md: 10px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 10px -2px rgba(0,0,0,0.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-dark); padding: 12px 16px; line-height: 1.4; padding-bottom: 80px; }
+        .container { max-width: 1280px; margin: 0 auto; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(6px);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .start-modal {
+            background: var(--surface-card); padding: 24px 28px; border-radius: var(--radius-lg);
+            width: 90%; max-width: 580px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); text-align: center;
+        }
+        .start-modal h2 { margin-bottom: 6px; color: var(--primary); font-size: 1.4rem; font-weight: 800; }
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { display: block; font-weight: 700; margin-bottom: 4px; font-size: 0.82rem; color: #334155; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.88rem;
+            transition: all 0.2s; background-color: #f8fafc;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--accent-blue); outline: none; background-color: #fff; }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white; padding: 14px 18px; border-radius: var(--radius-lg); margin-bottom: 10px;
+            box-shadow: var(--shadow-sm); border: 1px solid rgba(255,255,255,0.08);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .header-title h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.5px; }
+        .header-title p { color: #f59e0b; font-size: 0.82rem; font-weight: 600; margin-top: 2px; }
+
+        .status-bar { display: flex; gap: 6px; font-size: 0.8rem; flex-wrap: wrap; }
+        .status-item {
+            background: rgba(255, 255, 255, 0.08); padding: 4px 8px; border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.12); display: flex; align-items: center; gap: 4px;
+        }
+
+        .power-breakdown {
+            background: rgba(0,0,0,0.22); padding: 6px 12px; border-radius: 8px;
+            display: flex; justify-content: space-between; font-size: 0.8rem; flex-wrap: wrap; gap: 6px; border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        nav { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; background: #e2e8f0; padding: 4px; border-radius: 8px; }
+        nav button {
+            flex: 1; min-width: 75px; padding: 6px 6px; border: none; background-color: transparent;
+            color: var(--text-muted); font-weight: 700; cursor: pointer; border-radius: 6px;
+            transition: all 0.2s ease; font-size: 0.78rem;
+        }
+        nav button:hover { color: var(--text-dark); background-color: rgba(255,255,255,0.5); }
+        nav button.active { background-color: var(--surface-card); color: var(--accent-blue); box-shadow: var(--shadow-sm); }
+
+        .tab-content { display: none; background: var(--surface-card); padding: 16px 18px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); }
+        .tab-content.active { display: block; }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); min-width: 600px; }
+        th, td { padding: 8px 10px; text-align: center; font-size: 0.82rem; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f8fafc; font-weight: 700; color: #475569; border-bottom: 2px solid var(--border-color); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #f8fafc; }
+
+        .player-row-clickable { cursor: pointer; user-select: none; }
+        .player-row-clickable:hover { background-color: #f1f5f9 !important; }
+
+        .sort-btn {
+            background: none; border: none; font-weight: bold; cursor: pointer; color: var(--accent-blue); margin-left: 2px; font-size: 0.75rem;
+        }
+
+        .btn {
+            padding: 5px 10px; border: none; background-color: var(--primary-light);
+            color: white; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:disabled { background-color: #cbd5e1; cursor: not-allowed; transform: none; opacity: 0.7; }
+        .btn-danger { background-color: var(--accent-red); }
+        .btn-success { background-color: var(--accent-green); }
+        .btn-warning { background-color: var(--accent-gold); color: #fff; }
+        .btn-info { background-color: var(--accent-blue); color: #fff; }
+        .btn-purple { background-color: var(--accent-purple); color: #fff; }
+
+        .tier-badge { font-weight: 700; padding: 2px 6px; border-radius: 10px; font-size: 0.72rem; }
+        .tier-1 { background-color: #d1fae5; color: #065f46; }
+        .tier-2 { background-color: #f1f5f9; color: #475569; }
+
+        .slot-badge-starter { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 800; padding: 2px 5px; border-radius: 6px; font-size: 0.7rem; margin-right: 4px; display: inline-block; }
+        .slot-badge-backup { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; font-weight: 800; padding: 2px 5px; border-radius: 6px; font-size: 0.7rem; margin-right: 4px; display: inline-block; }
+        .slot-badge-reserve { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; font-weight: 800; padding: 2px 5px; border-radius: 6px; font-size: 0.7rem; margin-right: 4px; display: inline-block; }
+
+        .legend-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
+        .foreign-badge {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
+        .homegrown-badge {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
+        .mlb-badge {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
+        .toxic-badge {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem;
+            margin-left: 4px; display: inline-block;
+        }
+
+        .lock-badge {
+            background: #475569; color: #fff; font-weight: bold; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem; margin-left: 4px; display: inline-block;
+        }
+
+        .untradeable-badge {
+            background: #ef4444; color: #fff; font-weight: 800; padding: 2px 5px; border-radius: 8px; font-size: 0.7rem; margin-left: 4px; display: inline-block;
+        }
+
+        .protected-badge {
+            background: #10b981; color: #fff; font-weight: 800; padding: 1px 5px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; display: inline-block;
+        }
+
+        .sub-nav { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+        .sub-nav button { padding: 5px 10px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.8rem; color: var(--text-muted); }
+        .sub-nav button.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .log-box { background: #090d16; color: #38bdf8; font-family: 'SFMono-Regular', Consolas, monospace; padding: 10px 12px; border-radius: var(--radius-md); height: 200px; overflow-y: auto; margin-top: 6px; margin-bottom: 14px; line-height: 1.4; border: 1px solid #1e293b; font-size: 0.8rem; }
+        .notice-box { background-color: #eff6ff; border-left: 3px solid var(--accent-blue); padding: 8px 12px; margin-bottom: 10px; border-radius: 0 var(--radius-md) var(--radius-md) 0; font-size: 0.82rem; color: #1e40af; line-height: 1.4; }
+
+        .trade-card {
+            background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 8px;
+            display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm);
+        }
+        .trade-card-body { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .trade-player-info { flex: 1; min-width: 220px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
+
+        .multi-player-chip {
+            display: inline-flex; align-items: center; gap: 6px; background: #e2e8f0; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-right: 4px; margin-bottom: 4px;
+        }
+        .multi-player-chip.host { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .multi-player-chip.ready { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .multi-player-chip.not-ready { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        .draft-order-banner {
+            background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: var(--radius-md); font-size: 0.82rem; margin-bottom: 12px; font-weight: 600;
+        }
+
+        .season-step-banner {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #ffffff;
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .market-preview-box {
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+            border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 12px;
+            box-shadow: var(--shadow-sm); font-size: 0.83rem; color: #065f46;
+        }
+
+        textarea {
+            width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: monospace; font-size: 0.8rem; margin-top: 6px; resize: vertical;
+        }
+
+        .pip-window {
+            position: fixed; top: 120px; right: 20px; width: 400px; height: 540px; min-width: 300px; min-height: 240px; max-width: 650px; max-height: 850px;
+            background: #ffffff; border: 2px solid var(--primary); border-radius: var(--radius-lg);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); z-index: 9990; display: flex; flex-direction: column;
+            overflow: hidden; resize: both;
+        }
+        .pip-window.minimized { height: 38px !important; resize: none; overflow: hidden; }
+        .pip-header {
+            background: var(--primary); color: #fff; padding: 6px 10px; font-size: 0.8rem; font-weight: 800;
+            display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; flex-shrink: 0;
+        }
+        .pip-nav-tabs { display: flex; background: #1e293b; padding: 3px; gap: 2px; }
+        .pip-nav-tabs button {
+            flex: 1; padding: 4px; border: none; background: transparent; color: #94a3b8; font-size: 0.72rem; font-weight: 700; cursor: pointer; border-radius: 4px;
+        }
+        .pip-nav-tabs button.active { background: #2563eb; color: #fff; }
+
+        .pip-body { padding: 10px; overflow-y: auto; font-size: 0.78rem; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .pip-lineup-list { flex: 1; min-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; margin-top: 4px; }
+        .pip-lineup-item { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding: 4px 0; align-items: center; }
+        .pip-lineup-item:last-child { border-bottom: none; }
+
+        .pip-year-header {
+            border-bottom: 2px solid var(--accent-blue); margin: 10px 0 6px 0; padding-bottom: 4px;
+            font-weight: 800; color: var(--accent-blue); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;
+        }
+
+        .bio-pip-window {
+            position: fixed; top: 160px; left: 100px; width: 380px; height: 480px;
+            background: #ffffff; border: 2px solid var(--accent-purple); border-radius: var(--radius-lg);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); z-index: 9995; display: flex; flex-direction: column;
+            overflow: hidden; resize: both;
+        }
+
+        .bio-pip-header {
+            background: var(--accent-purple); color: #fff; padding: 8px 12px; font-size: 0.85rem; font-weight: 800;
+            display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;
+        }
+
+        .bio-card-section {
+            background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;
+        }
+        .bio-card-title { font-weight: 800; color: var(--primary); font-size: 0.8rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
+
+        .cheat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; text-align: left; }
+        .cheat-item-card { background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+        .cheat-item-card h4 { font-size: 0.85rem; color: var(--primary); font-weight: 800; }
+        .cheat-item-card p { font-size: 0.75rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<!-- 시작 모달 -->
+<div id="start-modal" class="modal-overlay">
+    <div class="start-modal">
+        <h2>⚾ 단장 멀티v1</h2>
+        <p style="color:var(--text-muted); margin-bottom:14px; font-size:0.82rem;">오프라인 싱글플레이 및 최대 10인 실시간 멀티플레이 지원</p>
+
+        <div class="form-group">
+            <label for="input-gm-name">단장 이름</label>
+            <input type="text" id="input-gm-name" placeholder="단장 이름을 입력하세요" value="단장">
+        </div>
+
+        <div class="form-group">
+            <label for="select-team">내 담당 구단 선택</label>
+            <select id="select-team" onchange="onSelectTeamChange()">
+                <option value="삼성 라이온즈">삼성 라이온즈 (대형 / 캡 120억)</option>
+                <option value="kt 위즈">kt 위즈 (중형 / 캡 110억)</option>
+                <option value="LG 트윈스">LG 트윈스 (대형 / 캡 120억)</option>
+                <option value="KIA 타이거즈">KIA 타이거즈 (대형 / 캡 115억)</option>
+                <option value="두산 베어스">두산 베어스 (중형 / 캡 110억)</option>
+                <option value="SSG 랜더스">SSG 랜더스 (대형 / 캡 115억)</option>
+                <option value="한화 이글스">한화 이글스 (대형 / 캡 115억)</option>
+                <option value="롯데 자이언츠">롯데 자이언츠 (중형 / 캡 110억)</option>
+                <option value="NC 다이노스">NC 다이노스 (중형 / 캡 100억)</option>
+                <option value="키움 히어로즈" selected>키움 히어로즈 (소형 / 캡 90억)</option>
+            </select>
+        </div>
+
+        <button class="btn btn-success" style="width:100%; padding:12px; font-size:1rem; margin-bottom:10px;" onclick="startSingleGame()">🎮 싱글 플레이 시작하기</button>
+
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button class="btn btn-info" style="flex:1; padding:8px;" onclick="initHost()">👑 멀티 방 생성 (Host)</button>
+            <button class="btn btn-warning" style="flex:1; padding:8px;" onclick="showJoinInput()">🎮 멀티 참가 (Guest)</button>
+        </div>
+
+        <div id="join-box" style="display:none;" class="form-group">
+            <label for="input-room-code">방 코드 (Host Peer ID)</label>
+            <input type="text" id="input-room-code" placeholder="Host에게 받은 방 코드를 입력하세요">
+            <button class="btn btn-success" style="width:100%; margin-top:8px; padding:8px;" onclick="initGuest()">접속하기</button>
+        </div>
+
+        <div id="lobby-box" style="display:none; text-align:left; background:#f1f5f9; padding:12px; border-radius:8px; border:1px solid #cbd5e1; margin-top:10px;">
+            <div style="font-weight:bold; font-size:0.88rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                <span>📢 접속된 단장 목록 (<span id="connected-count">1</span>/10명)</span>
+                <button class="btn btn-info" style="padding:2px 8px; font-size:0.75rem;" onclick="copyRoomCode()">코드 복사</button>
+            </div>
+            <div id="peer-code-display" style="font-family:monospace; font-size:0.8rem; background:#fff; padding:6px; border-radius:4px; margin-bottom:10px; border:1px solid #e2e8f0; word-break:break-all;"></div>
+            <div id="connected-players-list"></div>
+            <button id="start-game-btn" class="btn btn-success" style="width:100%; padding:10px; font-size:0.95rem; margin-top:8px; display:none;" onclick="startMultiGame()">시즌 개막하기</button>
+        </div>
+    </div>
+</div>
+
+<!-- 선수 약력(Bio) 모니터링 PIP 팝업 -->
+<div id="player-bio-pip" class="bio-pip-window" style="display:none;">
+    <div id="bio-pip-header" class="bio-pip-header">
+        <span id="bio-header-title">📜 선수 약력 및 통산 상세 리포트</span>
+        <button style="background:none; border:none; color:#fff; font-weight:bold; cursor:pointer;" onclick="closePlayerBioModal()">❌</button>
+    </div>
+    <div id="bio-pip-body" class="pip-body" style="background:#fff;"></div>
+</div>
+
+<!-- 치트키 모달 -->
+<div id="cheat-modal" class="modal-overlay" style="display:none;">
+    <div class="start-modal" style="max-width:620px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h2 style="margin-bottom:0; color:var(--accent-purple);">🕹️ 치트키 관리 패널</h2>
+            <button class="btn btn-danger" style="padding:2px 8px; font-size:0.8rem;" onclick="closeCheatModal()">❌ 닫기</button>
+        </div>
+        <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom:12px;">원하는 치트 버튼을 눌러 내 구단의 상태를 자유롭게 보정할 수 있습니다.</p>
+
+        <div class="cheat-grid">
+            <div class="cheat-item-card">
+                <div>
+                    <h4>💰 샐러리캡 +50억 확장</h4>
+                    <p>내 구단의 기본 샐러리캡을 즉시 50억 원 증액시킵니다.</p>
+                </div>
+                <button class="btn btn-success" style="width:100%; margin-top:6px;" onclick="cheatAddCap()">샐러리캡 +50억 적용</button>
+            </div>
+            
+            <div class="cheat-item-card">
+                <div>
+                    <h4>⚡ 1군 전력 극대화 (+2 버프)</h4>
+                    <p>현재 1군 엔트리 전체 선수들의 기량을 +2 증가시킵니다. (최대 S+)</p>
+                </div>
+                <button class="btn btn-warning" style="width:100%; margin-top:6px;" onclick="cheatBuffTier1()">1군 기량 +2 전체 버프</button>
+            </div>
+
+            <div class="cheat-item-card">
+                <div>
+                    <h4>🚀 2군 잠재력 S+ (15) 개화</h4>
+                    <p>2군에 위치한 모든 선수들의 잠재 능력을 최상위 S+(15)로 폭발시킵니다.</p>
+                </div>
+                <button class="btn btn-purple" style="width:100%; margin-top:6px;" onclick="cheatMaxTier2Pot()">2군 잠재력 S+ 일괄 설정</button>
+            </div>
+
+            <div class="cheat-item-card">
+                <div>
+                    <h4>💸 캡 패널티 0원 리셋</h4>
+                    <p>이월 및 초과로 쌓인 차기 캡 패널티(Dead Cap)를 완전히 초기화합니다.</p>
+                </div>
+                <button class="btn btn-info" style="width:100%; margin-top:6px;" onclick="cheatResetDeadCap()">캡 패널티 0원 초기화</button>
+            </div>
+
+            <div class="cheat-item-card" style="grid-column: span 2;">
+                <div>
+                    <h4>🏆 단장 레벨 +5 업 (경험치 충전)</h4>
+                    <p>단장 레벨을 즉시 5단계 상승시켜 추가 샐러리캡 혜택을 획득합니다.</p>
+                </div>
+                <button class="btn btn-success" style="width:100%; margin-top:6px;" onclick="cheatAddGMLevel()">단장 레벨 +5 승급</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PIP 창 -->
+<div id="pip-window" class="pip-window" style="display:none;">
+    <div id="pip-header" class="pip-header">
+        <span>📺 PIP 대시보드 & 선수 모니터링</span>
+        <div>
+            <button style="background:none; border:none; color:#fff; font-weight:bold; cursor:pointer; margin-right:4px;" onclick="togglePipMinimize()">➖</button>
+            <button style="background:none; border:none; color:#fff; font-weight:bold; cursor:pointer;" onclick="closePipWindow()">❌</button>
+        </div>
+    </div>
+    
+    <div class="pip-nav-tabs">
+        <button id="pip-tab-btn-status" class="active" onclick="switchPipTab('status')">👥 현황 및 라인업</button>
+        <button id="pip-tab-btn-growth" onclick="switchPipTab('growth')">📈 연도별 성장 (1·2군)</button>
+    </div>
+
+    <div style="background:#f1f5f9; border-bottom:1px solid var(--border-color); padding:5px 10px; display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; color:var(--primary);">
+        <span>🔊 <b>진행 알림음 볼륨</b></span>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <input type="range" id="pip-sound-volume-slider" min="0" max="100" value="70" style="width:90px; cursor:pointer;" oninput="updateSoundVolume(this.value)">
+            <b id="pip-sound-vol-text" style="min-width:32px; text-align:right; color:var(--accent-blue);">70%</b>
+        </div>
+    </div>
+
+    <div id="pip-view-status" class="pip-body">
+        <div id="pip-alert-box" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:6px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">
+            📢 시즌 알림: 단장 멀티v1 가동 중
+        </div>
+
+        <div>
+            <div style="font-weight:bold; color:var(--primary); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                <span>👥 단장 준비 현황</span>
+                <button id="pip-ready-btn" class="btn btn-warning" style="font-size:0.7rem; padding:2px 6px;" onclick="toggleSeasonReady()">내 준비 (❌ X)</button>
+            </div>
+            <div id="pip-status-chips" style="display:flex; flex-wrap:wrap;"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border-color); padding-top:6px; flex:1; display:flex; flex-direction:column;">
+            <div style="font-weight:bold; color:var(--primary); margin-bottom:4px;">⚾ 구단별 1군 라인업 (더블클릭 시 약력)</div>
+            <select id="pip-team-select" style="width:100%; font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipLineup()"></select>
+            <div id="pip-lineup-container" class="pip-lineup-list"></div>
+        </div>
+    </div>
+
+    <div id="pip-view-growth" class="pip-body" style="display:none;">
+        <div style="font-weight:bold; color:var(--primary); margin-bottom:2px;">📈 1·2군 전 선수 연도별 기량 변동 리포트</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <select id="pip-growth-team-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()"></select>
+            <select id="pip-growth-filter-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()">
+                <option value="ALL">전체 보기</option>
+                <option value="1군">1군만</option>
+                <option value="2군">2군만</option>
+                <option value="UP">상승만 (▲)</option>
+                <option value="DOWN">하락만 (▼)</option>
+            </select>
+        </div>
+        <div id="pip-growth-container" class="pip-lineup-list" style="flex:1; overflow-y:auto; margin-top:4px;"></div>
+    </div>
+</div>
+
+<div class="container">
+    <header>
+        <div class="header-top">
+            <div class="header-title">
+                <h1 id="team-gm-title">키움 히어로즈 단장</h1>
+                <p id="season-phase">📌 시즌 상태: 1분기 준비 중 (1~36경기)</p>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">📅 연도: <span id="current-year">2026</span>년</div>
+                <div class="status-item">🏆 단장 레벨: <b id="gm-level-text" style="color:#f59e0b;">Lv.1</b> (<span id="gm-exp-text">0/100</span> EXP)</div>
+                <div class="status-item">🏢 구단 규모: <b id="market-size-text" style="color:#93c5fd;">소형</b></div>
+                <div class="status-item">💰 실효 샐러리캡: <span id="total-salary">0</span>억 / <b id="salary-cap-text" style="color:#38bdf8;">90</b>억</div>
+                <div class="status-item">💸 차기 캡 패널티: <b id="dead-cap-text" style="color:#fca5a5;">0.0</b>억 원</div>
+                <div class="status-item">⚾ 1군 엔트리: <b id="tier1-count">0</b> / 28명</div>
+                <div class="status-item">⚡ 팀전력: <span id="overall-power-grade"></span></div>
+            </div>
+        </div>
+        <div class="power-breakdown">
+            <span>⚾ 선발(25%): <span id="pw-starter"></span></span>
+            <span>⚾ 불펜(15%): <span id="pw-reliever"></span></span>
+            <span>🧤 포수(10%): <span id="pw-catcher"></span></span>
+            <span>⚾ 내야(25%): <span id="pw-infield"></span></span>
+            <span>⚾ 외야(25%): <span id="pw-outfield"></span></span>
+        </div>
+    </header>
+
+    <nav>
+        <button class="nav-btn active" onclick="switchTab('roster')">선수단 (<span id="roster-count">30</span>)</button>
+        <button class="nav-btn" onclick="switchTab('market')">영입</button>
+        <button class="nav-btn" onclick="switchTab('trade')">AI 트레이드</button>
+        <button class="nav-btn" onclick="switchTab('userTrade')" style="position:relative;">🤝 유저 트레이드 <span id="inbox-badge" style="background:red; color:#fff; border-radius:50%; padding:1px 5px; font-size:0.65rem; display:none;">0</span></button>
+        <button class="nav-btn" onclick="switchTab('offseason')">오프시즌</button>
+        <button class="nav-btn" onclick="switchTab('season')">시즌진행</button>
+        <button class="nav-btn" onclick="switchTab('history')">역사</button>
+        <button class="nav-btn" onclick="switchTab('saveload')">저장</button>
+        <button class="btn btn-purple" style="font-size:0.75rem;" onclick="openCheatModal()">🕹️ 치트키</button>
+        <button class="btn btn-info" style="margin-left:auto; font-size:0.75rem;" onclick="openPipWindow()">📺 PIP대시보드</button>
+    </nav>
+
+    <div id="roster" class="tab-content active">
+        <div class="notice-box">
+            💡 <b>단장 멀티v1 시스템 가이드</b><br>
+            • <b>C/C+급 재계약 요구 연봉 정밀화</b>: C급 및 C+급 재계약 요구 연봉이 3억 원 안팎으로 미세 조정되었으며, 성골 C급은 2억 원, 성골 C+급은 3억 원(장기계약 기준)으로 합리적인 계약선을 갖춥니다.<br>
+            • <b>오프시즌 재계약 방출 기능 복구</b>: 만료 선수 협상 시 [❌ 방출] 버튼을 통해 거절 및 방출 처리가 가능합니다.
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div class="sub-nav" style="margin-bottom: 0;">
+                <button class="pos-filter active" onclick="filterRoster('ALL')">전체 보기</button>
+                <button class="pos-filter" onclick="filterRoster('1군')">1군 (28명)</button>
+                <button class="pos-filter" onclick="filterRoster('2군')">2군 전체</button>
+                <button class="pos-filter" onclick="filterRoster('선발')">선발</button>
+                <button class="pos-filter" onclick="filterRoster('불펜')">불펜</button>
+                <button class="pos-filter" onclick="filterRoster('포수')">포수</button>
+                <button class="pos-filter" onclick="filterRoster('내야수')">내야수</button>
+                <button class="pos-filter" onclick="filterRoster('외야수')">외야수</button>
+                <button class="pos-filter" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="filterRoster('POSTING')">✈️ 포스팅/성골</button>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <span style="font-size:0.78rem; font-weight:bold; color:var(--accent-blue);">긴급 보충: <b id="emergency-refill-text">0</b>/3회</span>
+                <button class="btn btn-info" onclick="autoFillMissingPlayers()">🛠️ 긴급 육성선수 보충</button>
+                <button class="btn btn-warning" onclick="autoAssignFirstTier()">자동 1군 필수 엔트리 구성</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>구분 (역할)</th>
+                        <th>포지션</th>
+                        <th>이름 (더블클릭 약력)</th>
+                        <th>나이 (근속)</th>
+                        <th>현재 능력 <button class="sort-btn" onclick="toggleRosterSort('current')">▲▼</button></th>
+                        <th>잠재 능력 <button class="sort-btn" onclick="toggleRosterSort('potential')">▲▼</button></th>
+                        <th>연봉 <button class="sort-btn" onclick="toggleRosterSort('salary')">▲▼</button></th>
+                        <th>계약기간</th>
+                        <th>고정 / 트레이드 보호</th>
+                        <th>엔트리 변경</th>
+                    </tr>
+                </thead>
+                <tbody id="roster-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="market" class="tab-content">
+        <div id="market-preview-box" class="market-preview-box">
+            <div style="font-weight:800; font-size:0.92rem; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                <span>🔮 [이번 시즌 영입 풀 스카우팅 리포트] <span id="preview-year-text">2026</span>년 시장 동향 분석</span>
+                <span class="tier-badge tier-1" style="font-size:0.75rem;">⭐ 유저 전용 영입 풀 확보 완료</span>
+            </div>
+            <div id="market-preview-content"></div>
+        </div>
+
+        <div class="sub-nav">
+            <button class="market-btn active" onclick="switchMarket('foreign')">외국인 용병 (플레이어 전용 3명 생성 / 계약 1년)</button>
+            <button class="market-btn" onclick="switchMarket('fa')">FA 시장 (인원당 4명 생성 / 최대 3명 영입)</button>
+        </div>
+
+        <div id="foreign-order-banner" class="draft-order-banner">
+            🌐 <b>외국인 용병 영입 순서 (참가 플레이어 전용)</b>: <span id="foreign-order-text"></span>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>포지션</th>
+                        <th>이름 (더블클릭 약력)</th>
+                        <th>나이</th>
+                        <th>현재 능력</th>
+                        <th>잠재 능력</th>
+                        <th>요구 연봉</th>
+                        <th>계약기간</th>
+                        <th>영입</th>
+                    </tr>
+                </thead>
+                <tbody id="market-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="trade" class="tab-content">
+        <h2>KBO 구단(AI 컴퓨터) 트레이드 제안서 (분기당 5장)</h2>
+        <div id="trade-block-container">
+            <p style="text-align: center; padding: 30px; color: var(--text-muted);">분기 진행(36G, 72G, 108G) 완료 시 트레이드 마감 카드가 생성됩니다.</p>
+        </div>
+    </div>
+
+    <div id="userTrade" class="tab-content">
+        <h2>🤝 인간 단장 간 직접 트레이드 (도착 제안함 & 직접 요청)</h2>
+        <div class="notice-box">
+            • <b>도착한 제안함</b>: 다른 인간 단장이 나에게 보낸 트레이드 제안을 확인하고 수락/거절할 수 있습니다.<br>
+            • <b>직접 트레이드 요청</b>: **2분기 종료 시점(72G 완료 직후)**에 오직 다른 인간 단장을 대상으로 1회 제안 가능합니다 (용병, FA 및 트레이드 불가 지정 선수 제외).
+        </div>
+
+        <h3 style="margin-top:16px; font-size:1rem; color:var(--primary);">📬 1. 도착한 트레이드 제안함</h3>
+        <div id="incoming-proposals-container" style="margin-top: 8px;">
+            <p style="text-align: center; padding: 20px; color: var(--text-muted);">현재 도착한 직접 트레이드 제안이 없습니다.</p>
+        </div>
+
+        <h3 style="margin-top:24px; font-size:1rem; color:var(--primary);">📨 2. 상대 단장에게 직접 트레이드 요청 보내기</h3>
+        <div id="direct-trade-main-box" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+            <div style="flex:1; min-width:300px; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
+                <div class="form-group">
+                    <label for="dt-target-player">상대 인간 단장 구단 선수 선택 (용병, FA, 보호선수 제외)</label>
+                    <select id="dt-target-player"></select>
+                </div>
+            </div>
+
+            <div style="flex:1; min-width:300px; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
+                <div class="form-group">
+                    <label for="dt-my-player">보낼 내 선수 선택 (용병, FA, 보호선수 제외)</label>
+                    <select id="dt-my-player"></select>
+                </div>
+                <button id="dt-request-btn" class="btn btn-success" style="width:100%; margin-top:14px; padding:10px;" onclick="sendDirectTradeRequest()">📨 상대 단장에게 트레이드 요청 보내기</button>
+            </div>
+        </div>
+        <div id="direct-trade-status-msg" style="margin-top:14px; font-weight:bold; color:var(--accent-red);"></div>
+    </div>
+
+    <div id="offseason" class="tab-content">
+        <h2>✈️ 해외 포스팅 진출 요청 (일반 7년 / ⭐ 별선수 5년 근속 & A0 이상)</h2>
+        <div id="posting-requests-container" style="margin-bottom:20px;">
+            <p style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid var(--border-color);">현재 해외 포스팅을 요청한 선수가 없습니다.</p>
+        </div>
+
+        <h2>1. 만료 선수 재계약 협상 (33세 이상 장기 계약은 최대 2년 / 방출 선택 가능)</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>포지션</th>
+                        <th>이름 (더블클릭 약력)</th>
+                        <th>나이</th>
+                        <th>현재 능력</th>
+                        <th>잠재 능력</th>
+                        <th>계약 선택지 (1년 계약 / 장기 계약 / 방출)</th>
+                    </tr>
+                </thead>
+                <tbody id="resign-list">
+                    <tr><td colspan="6" style="color:var(--text-muted);">현재 만료 예정인 선수가 없습니다.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 style="margin-top: 24px;">2. 신인 드래프트 (별선수 잠재력 A 이상 특급 풀)</h2>
+        <div class="draft-order-banner">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>🎯 <b>신인 드래프트 지명 순서 (참가 플레이어 전용 / 최대 5명)</b>:</span>
+                <button id="draft-pass-btn" class="btn btn-danger" style="font-size:0.75rem; padding:3px 8px;" onclick="passDraft()">✋ 드래프트 포기 (Pass)</button>
+            </div>
+            <div id="draft-picks-status" style="margin-top:6px; font-weight:normal; color:#334155; display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>포지션</th>
+                        <th>이름 (더블클릭 약력)</th>
+                        <th>나이</th>
+                        <th>현재 능력</th>
+                        <th>잠재 능력</th>
+                        <th>계약금(연봉)</th>
+                        <th>지명하기</th>
+                    </tr>
+                </thead>
+                <tbody id="draft-list">
+                    <tr><td colspan="7" style="color:var(--text-muted);">오프시즌 진입 시 신인 드래프트 풀이 생성됩니다.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="season" class="tab-content">
+        <div class="notice-box" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; background:#f0f9ff; border-left-color:var(--accent-blue);">
+            <div>
+                <b style="font-size:0.9rem; color:var(--primary);">👥 참가 단장 실시간 진행 준비 현황</b>
+                <div id="season-ready-status-list" style="margin-top:6px; font-size:0.85rem; display:flex; gap:8px; flex-wrap:wrap;"></div>
+            </div>
+            <div>
+                <button id="toggle-season-ready-btn" class="btn btn-warning" style="padding:8px 14px; font-size:0.88rem;" onclick="toggleSeasonReady()">✋ 내 준비 상태 변경 (❌ X ➔ ⭕ O)</button>
+            </div>
+        </div>
+
+        <div id="season-step-banner" class="season-step-banner">
+            <div style="font-weight: 800; font-size: 0.95rem; color: #f59e0b;" id="banner-phase-title">📌 현재 진행 단계: 1분기 준비 중 (1~36G)</div>
+            <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 4px;" id="banner-phase-desc">아래 [1. 1분기 진행] 버튼을 눌러 개막전 및 정규시즌 36경기를 진행하세요.</div>
+        </div>
+
+        <div style="margin-bottom: 14px; display: flex; gap: 6px; flex-wrap: wrap;">
+            <button id="sim-q1-btn" class="btn" onclick="simulateQuarter(1)">1. 1분기 진행 (1~36G)</button>
+            <button id="trade-btn-1" class="btn btn-warning" onclick="openTradeBlockTab()" disabled>트레이드 검토 (36G)</button>
+            <button id="sim-q2-btn" class="btn" onclick="simulateQuarter(2)" disabled>2. 2분기 진행 (37~72G)</button>
+            <button id="trade-btn-2" class="btn btn-warning" onclick="openTradeBlockTab()" disabled>트레이드 검토 (72G)</button>
+            <button id="sim-q3-btn" class="btn" onclick="simulateQuarter(3)" disabled>3. 3분기 진행 (73~108G)</button>
+            <button id="trade-btn-3" class="btn btn-warning" onclick="openTradeBlockTab()" disabled>트레이드 검토 (108G)</button>
+            <button id="sim-q4-btn" class="btn" onclick="simulateQuarter(4)" disabled>4. 4분기 진행 (109~144G)</button>
+            <button id="ps-btn" class="btn" onclick="advancePostseason()" disabled>🏆 포스트시즌 진행</button>
+            <button id="next-year-btn" class="btn btn-success" onclick="prepareOffseason()" disabled>오프시즌 진입</button>
+            <button id="start-new-season-btn" class="btn" onclick="startNextSeason()" disabled>다음 시즌 개막</button>
+        </div>
+
+        <h3>시즌 진행 및 경기 기록 Log</h3>
+        <div id="game-log" class="log-box">게임에 오신 것을 환영합니다! [1분기 진행] 버튼을 눌러 시즌을 개막하세요.<br></div>
+
+        <h3>리그 순위표 및 샐러리캡 현황</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>순위</th>
+                        <th>팀명</th>
+                        <th>담당자 (생애주기)</th>
+                        <th>팀 전력</th>
+                        <th>총 연봉 / 실효 캡</th>
+                        <th>승</th>
+                        <th>패</th>
+                        <th>무</th>
+                        <th>승률</th>
+                    </tr>
+                </thead>
+                <tbody id="standings-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="history" class="tab-content">
+        <h2>📜 KBO 시뮬레이터 역대 기록실</h2>
+        
+        <div class="sub-nav" style="margin-top:10px; margin-bottom:14px;">
+            <button id="hist-btn-seasons" class="active" onclick="switchHistorySubTab('seasons')">🏆 시즌별 순위표 & 우승/준우승</button>
+            <button id="hist-btn-stats" onclick="switchHistorySubTab('stats')">📊 단장/구단별 역대 통계 (평균순위, 우승, 준우승)</button>
+        </div>
+
+        <div id="history-seasons-view">
+            <div id="history-seasons-container">
+                <p style="text-align: center; padding: 30px; color: var(--text-muted);">아직 완료된 시즌 기록이 없습니다.</p>
+            </div>
+        </div>
+
+        <div id="history-stats-view" style="display:none;">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>구단명</th>
+                            <th>담당 단장</th>
+                            <th>누적 시즌</th>
+                            <th>🏆 우승 횟수</th>
+                            <th>🥈 준우승 횟수</th>
+                            <th>📊 평균 정규시즌 순위</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-stats-list">
+                        <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">아직 완료된 시즌 기록이 없습니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="saveload" class="tab-content">
+        <h2>이어하기 코드 (Save / Load)</h2>
+        <div style="margin-bottom: 20px;">
+            <h3>현재 진행 상황 내보내기 (Export)</h3>
+            <p style="font-size:0.8rem; color:var(--accent-green); font-weight:bold; margin-top:2px;">📦 Deflate 고축소 압축 알고리즘이 적용되어 코드가 80% 이상 짧아졌습니다.</p>
+            <button class="btn btn-info" style="margin-top:6px;" onclick="generateSaveCode()">초압축 세이브 코드 생성하기</button>
+            <textarea id="export-code-area" readonly placeholder="[초압축 세이브 코드 생성하기] 버튼을 누르면 축소된 코드가 여기에 나타납니다."></textarea>
+        </div>
+        <div>
+            <h3>세이브 코드 불러오기 (Import)</h3>
+            <textarea id="import-code-area" placeholder="저장해둔 세이브 코드를 여기에 붙여넣으세요."></textarea>
+            <button class="btn btn-success" style="margin-top: 8px;" onclick="loadSaveCode()">코드 불러오기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SUB_GRADES = ['F', 'D-', 'D', 'D+', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+', 'S', 'S+'];
+    const POSITIONS = ['선발', '불펜', '포수', '내야수', '외야수'];
+
+    const POS_SLOTS = {
+        '선발': [ { name: '주전', count: 5, weight: 0.85 }, { name: '후보', count: 1, weight: 0.15 } ],
+        '불펜': [ { name: '주전', count: 3, weight: 0.60 }, { name: '후보', count: 3, weight: 0.30 }, { name: '예비', count: 1, weight: 0.10 } ],
+        '포수': [ { name: '주전', count: 1, weight: 0.70 }, { name: '후보', count: 1, weight: 0.30 } ],
+        '내야수': [ { name: '주전', count: 4, weight: 0.70 }, { name: '후보', count: 2, weight: 0.30 } ],
+        '외야수': [ { name: '주전', count: 3, weight: 0.60 }, { name: '후보', count: 2, weight: 0.25 }, { name: '예비', count: 1, weight: 0.15 } ]
+    };
+
+    const TEAM_MARKET_SIZES = {
+        "삼성 라이온즈": { size: "대형", baseCap: 120, minPw: 5.8, maxPw: 7.2 },
+        "kt 위즈": { size: "중형", baseCap: 110, minPw: 5.8, maxPw: 7.2 },
+        "LG 트윈스": { size: "대형", baseCap: 120, minPw: 5.6, maxPw: 7.0 },
+        "KIA 타이거즈": { size: "대형", baseCap: 115, minPw: 5.6, maxPw: 7.0 },
+        "두산 베어스": { size: "중형", baseCap: 110, minPw: 5.6, maxPw: 7.0 },
+        "SSG 랜더스": { size: "대형", baseCap: 115, minPw: 5.4, maxPw: 6.8 },
+        "한화 이글스": { size: "대형", baseCap: 115, minPw: 5.4, maxPw: 6.8 },
+        "롯데 자이언츠": { size: "중형", baseCap: 110, minPw: 5.4, maxPw: 6.8 },
+        "NC 다이노스": { size: "중형", baseCap: 100, minPw: 5.4, maxPw: 6.8 },
+        "키움 히어로즈": { size: "소형", baseCap: 90, minPw: 5.2, maxPw: 6.5 }
+    };
+
+    const LEGEND_NAMES = [
+        { name: "김도영", pos: "내야수" }, { name: "양현종", pos: "선발" }, { name: "최형우", pos: "외야수" }, { name: "나성범", pos: "외야수" },
+        { name: "구자욱", pos: "외야수" }, { name: "원태인", pos: "선발" }, { name: "오승환", pos: "불펜" }, { name: "이승엽", pos: "내야수" },
+        { name: "박해민", pos: "외야수" }, { name: "오지환", pos: "내야수" }, { name: "김현수", pos: "외야수" }, { name: "박용택", pos: "외야수" },
+        { name: "곽빈", pos: "선발" }, { name: "양의지", pos: "포수" }, { name: "김재환", pos: "외야수" }, { name: "정철원", pos: "불펜" },
+        { name: "최정", pos: "내야수" }, { name: "김광현", pos: "선발" }, { name: "추신수", pos: "외야수" }, { name: "박성한", pos: "내야수" },
+        { name: "전준우", pos: "외야수" }, { name: "정훈", pos: "내야수" }, { name: "이대호", pos: "내야수" }, { name: "손아섭", pos: "외야수" },
+        { name: "류현진", pos: "선발" }, { name: "노시환", pos: "내야수" }, { name: "문동주", pos: "선발" }, { name: "채은성", pos: "내야수" },
+        { name: "박건우", pos: "외야수" }, { name: "박민우", pos: "내야수" }, { name: "김주원", pos: "내야수" },
+        { name: "고영표", pos: "선발" }, { name: "강백호", pos: "내야수" }, { name: "박병호", pos: "내야수" }, { name: "황재균", pos: "내야수" },
+        { name: "이정후", pos: "외야수" }, { name: "김혜성", pos: "내야수" }, { name: "안우진", pos: "선발" }, { name: "강정호", pos: "내야수" }
+    ];
+
+    const MLB_JR_LEGENDS = ["스탠튼 Jr.", "게레로 Jr.", "타티스 Jr.", "비셋 Jr.", "그리피 Jr.", "본즈 Jr."];
+
+    let KBO_TEAMS = Object.keys(TEAM_MARKET_SIZES);
+
+    let peer = null;
+    let myPeerId = "local_host";
+    let isHost = true;
+    let hostConn = null;
+    let guestConns = []; 
+    let myGMName = "단장";
+    let myTeamName = "키움 히어로즈";
+    let playersInRoom = [];
+    let mySeasonReady = false;
+
+    let soundVolume = 0.7;
+
+    let currentYear = 2026;
+    let phase = 'Q1_READY'; 
+
+    let salaryCap = 90;
+    let playoffCapBonus = 0;
+    
+    let teamDeadCapMap = {};
+    let teamLastSeasonCapPenaltyMap = {};
+    let directTradeUsedMap = {};
+    let emergencyRefillCountMap = {};
+    let aiOverCapYearsMap = {};
+    let incomingTradeProposals = [];
+    let aiTeamLifecycleMap = {};
+    let postedPlayersMap = {};
+    let postingCandidatesMap = {};
+
+    let gmLevel = 1;
+    let gmExp = 0;
+
+    let allTeamRosters = {};
+    let marketPool = { foreign: [], fa: [] };
+    let marketPreviewSummary = {}; 
+    let draftPool = [];
+    let resignCandidatesMap = {};
+    let tradeProposalsMap = {};
+    let faSignedCountMap = {};
+    let foreignSignedCountMap = {};
+    let draftPicksCountMap = {};
+    let draftPassedMap = {};
+    let foreignDraftOrder = [];
+    let standings = [];
+    let seasonHistory = [];
+    let currentPosFilter = 'ALL';
+    let currentHistorySubTab = 'seasons';
+
+    let rosterSortField = 'current';
+    let rosterSortOrder = 'desc';
+
+    let psData = {
+        top5: [], currentRound: 'WC', gameNum: 1,
+        teamA: null, teamB: null, winsA: 0, winsB: 0, targetWins: 0,
+        wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null,
+        poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null
+    };
+
+    const lastNames = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황", "안", "송", "전", "홍", "유", "고", "문", "양", "손", "배", "백", "허", "남", "심", "노", "하", "곽", "성", "차", "주", "우", "구", "신", "민"];
+    const firstNames = ["민준", "서준", "도윤", "예준", "시우", "하준", "주원", "지호", "현우", "준서", "건우", "우진", "현준", "성민", "재현", "승우", "태양", "정우", "재윤", "윤우", "지후", "민재", "승현", "지환", "준영", "동현", "정민", "수호", "성현", "윤재", "준혁", "은우", "서진", "태민", "하진", "시안", "승민", "도현", "민호", "지안", "선우", "유준", "태윤", "진우", "찬희", "도경", "시후", "준열", "영민", "원준", "연우", "민규", "다원", "건호", "주호", "승원", "지언", "재민", "태경", "현민"];
+
+    function getRandomKoreanName() {
+        return lastNames[Math.floor(Math.random() * lastNames.length)] + firstNames[Math.floor(Math.random() * firstNames.length)];
+    }
+
+    const foreignLast = ["존슨", "스미스", "위즈", "가르시아", "실바", "페레즈", "밀러", "디아즈", "마르티네스", "테일러", "앤더슨", "토마스"];
+    const foreignFirst = ["잭", "라이언", "카를로스", "마이크", "다니엘", "로버트", "케빈", "브룩스", "타이러", "에단", "오스틴", "브랜든"];
+
+    function getRandomForeignName() {
+        return foreignFirst[Math.floor(Math.random() * foreignFirst.length)] + " " + foreignLast[Math.floor(Math.random() * foreignLast.length)];
+    }
+
+    document.addEventListener('click', function(e) {
+        const bioPip = document.getElementById('player-bio-pip');
+        if (bioPip && bioPip.style.display !== 'none') {
+            if (!bioPip.contains(e.target) && !e.target.closest('.player-row-clickable')) {
+                closePlayerBioModal();
+            }
+        }
+    });
+
+    async function compressSaveData(jsonStr) {
+        if ('CompressionStream' in window) {
+            const stream = new Blob([jsonStr]).stream().pipeThrough(new CompressionStream('deflate'));
+            const response = new Response(stream);
+            const buffer = await response.arrayBuffer();
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        } else {
+            return btoa(encodeURIComponent(jsonStr));
+        }
+    }
+
+    async function decompressSaveData(base64Str) {
+        if ('DecompressionStream' in window) {
+            try {
+                const binary = atob(base64Str);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+                const response = new Response(stream);
+                return await response.text();
+            } catch(e) {
+                return decodeURIComponent(atob(base64Str));
+            }
+        } else {
+            return decodeURIComponent(atob(base64Str));
+        }
+    }
+
+    function updateSoundVolume(val) {
+        soundVolume = parseInt(val) / 100;
+        const textEl = document.getElementById('pip-sound-vol-text');
+        if (textEl) {
+            textEl.innerText = val === '0' ? '음소거' : `${val}%`;
+            textEl.style.color = val === '0' ? '#ef4444' : '#2563eb';
+        }
+    }
+
+    function playChimeSound() {
+        if (soundVolume <= 0) return; 
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = ctx.currentTime;
+
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, now); 
+            gain1.gain.setValueAtTime(0.12 * soundVolume, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.35);
+
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(659.25, now + 0.1); 
+            gain2.gain.setValueAtTime(0.12 * soundVolume, now + 0.1);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.1);
+            osc2.stop(now + 0.5);
+        } catch(e) {}
+    }
+
+    function openCheatModal() { document.getElementById('cheat-modal').style.display = 'flex'; }
+    function closeCheatModal() { document.getElementById('cheat-modal').style.display = 'none'; }
+
+    function cheatAddCap() {
+        if (TEAM_MARKET_SIZES[myTeamName]) TEAM_MARKET_SIZES[myTeamName].baseCap += 50;
+        log(`🕹️ <b>[치트 사용]</b> ${myTeamName} 구단의 기본 샐러리캡이 +50억 원 증액되었습니다!`);
+        broadcastGameState();
+        alert("💰 샐러리캡 50억 원이 추가되었습니다!");
+    }
+
+    function cheatBuffTier1() {
+        let roster = getMyRoster();
+        let buffedCount = 0;
+        roster.forEach(p => {
+            if (p.tier === 1) {
+                p.current = Math.min(15, p.current + 2);
+                p.potential = Math.max(p.current, p.potential);
+                p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                p.lastChangeReason = "🕹️ 치트 전력 버프";
+                buffedCount++;
+            }
+        });
+        allTeamRosters[myTeamName] = roster;
+        log(`🕹️ <b>[치트 사용]</b> 1군 선수 ${buffedCount}명의 현재 능력치가 +2 상승했습니다!`);
+        broadcastGameState();
+        alert(`⚡ 1군 선수 ${buffedCount}명 전원 능력치 +2 버프 완료!`);
+    }
+
+    function cheatMaxTier2Pot() {
+        let roster = getMyRoster();
+        let count = 0;
+        roster.forEach(p => {
+            if (p.tier === 2) {
+                p.potential = 15; 
+                p.lastChangeReason = "🕹️ 치트 잠재력 개화";
+                count++;
+            }
+        });
+        allTeamRosters[myTeamName] = roster;
+        log(`🕹️ <b>[치트 사용]</b> 2군 선수 ${count}명의 잠재 능력이 최상위 S+(15)로 폭발했습니다!`);
+        broadcastGameState();
+        alert(`🚀 2군 선수 ${count}명 전원 잠재 능력 S+ 개화 완료!`);
+    }
+
+    function cheatResetDeadCap() {
+        teamDeadCapMap[myTeamName] = 0.0;
+        teamLastSeasonCapPenaltyMap[myTeamName] = 0.0;
+        log(`🕹️ <b>[치트 사용]</b> ${myTeamName} 구단의 샐러리캡 패널티(Dead Cap)가 0원으로 완화되었습니다.`);
+        broadcastGameState();
+        alert("💸 차기 캡 패널티가 0원으로 리셋되었습니다!");
+    }
+
+    function cheatAddGMLevel() {
+        gmLevel += 5;
+        log(`🕹️ <b>[치트 사용]</b> 단장 레벨이 +5단계 폭승했습니다! (현재 Lv.${gmLevel})`);
+        broadcastGameState();
+        alert(`🏆 단장 레벨이 Lv.${gmLevel}(으)로 상승했습니다!`);
+    }
+
+    function getPlayerBadgesHTML(p) {
+        if (!p) return '';
+        let badges = '';
+        if (p.isLegend) badges += `<span class="legend-badge">⭐ 별선수</span>`;
+        if (p.isForeign) badges += `<span class="foreign-badge">🌐 용병</span>`;
+        if (p.isFA) badges += `<span class="protected-badge" style="background:#d97706; color:#fff;">FA</span>`;
+        if (p.isToxic) badges += `<span class="toxic-badge">💸 악성계약</span>`;
+        if (p.isUntradeable) badges += `<span class="untradeable-badge">🚫 트레이드불가</span>`;
+        else if (p.isLockedToTier2) badges += `<span class="lock-badge">🔒 2군고정</span>`;
+
+        if (p.isPostedInMLB) {
+            badges += `<span class="mlb-badge" style="background: linear-gradient(135deg, #0284c7 0%, #1e40af 100%);">✈️ MLB 진출중(${p.postedMLBYears}년차)</span>`;
+        } else {
+            if (!p.isLegend && !p.hasMLBBadge && p.teamTenure >= 7) badges += `<span class="homegrown-badge">👑 성골</span>`;
+            if (p.hasMLBBadge) badges += `<span class="mlb-badge">🇺🇸 메이저리거(${p.postedMLBYears}년)</span>`;
+        }
+        return badges;
+    }
+
+    function getEffectiveCap(teamName) {
+        let baseCap = TEAM_MARKET_SIZES[teamName] ? TEAM_MARKET_SIZES[teamName].baseCap : 100;
+        let lastPenalty = teamLastSeasonCapPenaltyMap[teamName] || 0.0;
+        let isMyTeam = (teamName === myTeamName);
+        let gmCapBonus = isMyTeam ? (gmLevel * 1) : 0;
+        return Math.max(10, baseCap - lastPenalty + gmCapBonus);
+    }
+
+    function resetAllReadies() {
+        mySeasonReady = false;
+        playersInRoom.forEach(p => p.isSeasonReady = false);
+    }
+
+    function addGMExp(amount) {
+        gmExp += amount;
+        while (gmExp >= 100) {
+            gmLevel += 1;
+            gmExp -= 100;
+            log(`🎉 <b>[단장 레벨 업!]</b> 단장 경험치가 충족되어 <b>Lv.${gmLevel}</b> 단장으로 승급했습니다! (샐러리캡 +1억 원 확장)`);
+        }
+    }
+
+    function log(msg, broadcast = true) {
+        const logBox = document.getElementById('game-log');
+        if (logBox) {
+            logBox.innerHTML += msg + '<br>';
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        if (isHost && broadcast) {
+            guestConns.forEach(c => c.send({ type: 'LOG_MSG', msg }));
+        }
+    }
+
+    function setPipAlert(text) {
+        const box = document.getElementById('pip-alert-box');
+        if (box) box.innerHTML = `📢 ${text}`;
+    }
+
+    function switchPipTab(tab) {
+        document.getElementById('pip-tab-btn-status').classList.toggle('active', tab === 'status');
+        document.getElementById('pip-tab-btn-growth').classList.toggle('active', tab === 'growth');
+        document.getElementById('pip-view-status').style.display = (tab === 'status') ? 'flex' : 'none';
+        document.getElementById('pip-view-growth').style.display = (tab === 'growth') ? 'flex' : 'none';
+
+        if (tab === 'growth') renderPipGrowthList();
+    }
+
+    function startSingleGame() {
+        myGMName = document.getElementById('input-gm-name').value.trim() || "단장";
+        myTeamName = document.getElementById('select-team').value;
+        isHost = true;
+        myPeerId = "local_host";
+        playersInRoom = [{ peerId: myPeerId, name: myGMName, teamName: myTeamName, isHost: true, isReady: true, isSeasonReady: false }];
+        startMultiGame();
+    }
+
+    function initHost() {
+        myGMName = document.getElementById('input-gm-name').value.trim() || "방장 단장";
+        myTeamName = document.getElementById('select-team').value;
+        isHost = true;
+        
+        peer = new Peer();
+        peer.on('open', (id) => {
+            myPeerId = id;
+            playersInRoom = [{ peerId: myPeerId, name: myGMName, teamName: myTeamName, isHost: true, isReady: true, isSeasonReady: false }];
+            
+            document.getElementById('peer-code-display').innerText = myPeerId;
+            document.getElementById('lobby-box').style.display = 'block';
+            document.getElementById('start-game-btn').style.display = 'block';
+            renderLobbyList();
+        });
+
+        peer.on('connection', (conn) => {
+            if (guestConns.length >= 9) {
+                conn.send({ type: 'ERROR', msg: '방이 가득 찼습니다 (최대 10명).' });
+                conn.close();
+                return;
+            }
+
+            guestConns.push(conn);
+            conn.on('data', (data) => handleHostReceivedData(conn, data));
+            conn.on('close', () => {
+                guestConns = guestConns.filter(c => c !== conn);
+                playersInRoom = playersInRoom.filter(p => p.peerId !== conn.peer);
+                broadcastLobbyState();
+            });
+        });
+    }
+
+    function showJoinInput() { document.getElementById('join-box').style.display = 'block'; }
+
+    function initGuest() {
+        const hostCode = document.getElementById('input-room-code').value.trim();
+        if (!hostCode) { alert("방 코드를 입력하세요."); return; }
+
+        myGMName = document.getElementById('input-gm-name').value.trim() || "게스트 단장";
+        myTeamName = document.getElementById('select-team').value;
+        isHost = false;
+
+        peer = new Peer();
+        peer.on('open', (id) => {
+            myPeerId = id;
+            hostConn = peer.connect(hostCode);
+
+            hostConn.on('open', () => {
+                document.getElementById('lobby-box').style.display = 'block';
+                document.getElementById('peer-code-display').innerText = "방에 연결됨: " + hostCode;
+                
+                hostConn.send({ type: 'JOIN', peerId: myPeerId, name: myGMName, teamName: myTeamName });
+            });
+
+            hostConn.on('data', (data) => handleGuestReceivedData(data));
+            hostConn.on('close', () => alert("방장과의 연결이 끊어졌습니다."));
+        });
+    }
+
+    function toggleSeasonReady() {
+        mySeasonReady = !mySeasonReady;
+        if (isHost) {
+            const p = playersInRoom.find(x => x.peerId === myPeerId);
+            if (p) p.isSeasonReady = mySeasonReady;
+            broadcastGameState();
+        } else if (hostConn) {
+            hostConn.send({ type: 'TOGGLE_SEASON_READY', peerId: myPeerId, isSeasonReady: mySeasonReady });
+        }
+    }
+
+    function handleHostReceivedData(conn, data) {
+        if (data.type === 'JOIN') {
+            let selected = data.teamName;
+            const takenTeams = playersInRoom.map(p => p.teamName);
+            if (takenTeams.includes(selected)) {
+                selected = KBO_TEAMS.find(t => !takenTeams.includes(t)) || selected;
+            }
+            playersInRoom.push({ peerId: data.peerId, name: data.name, teamName: selected, isHost: false, isReady: true, isSeasonReady: false });
+            broadcastLobbyState();
+        } else if (data.type === 'CHANGE_TEAM') {
+            const p = playersInRoom.find(x => x.peerId === data.peerId);
+            if (p) { p.teamName = data.teamName; broadcastLobbyState(); }
+        } else if (data.type === 'TOGGLE_SEASON_READY') {
+            const p = playersInRoom.find(x => x.peerId === data.peerId);
+            if (p) { p.isSeasonReady = data.isSeasonReady; broadcastGameState(); }
+        } else if (data.type === 'ACTION_ROSTER_UPDATE') {
+            allTeamRosters[data.teamName] = data.roster; broadcastGameState();
+        } else if (data.type === 'ACTION_MARKET_SIGN') {
+            processMarketSign(data.teamName, data.marketType, data.playerId); broadcastGameState();
+        } else if (data.type === 'ACTION_TRADE_ACCEPT') {
+            processTradeAccept(data.teamName, data.tradeId); broadcastGameState();
+        } else if (data.type === 'ACTION_TRADE_DECLINE') {
+            processTradeDecline(data.teamName, data.tradeId); broadcastGameState();
+        } else if (data.type === 'ACTION_DIRECT_TRADE_REQUEST') {
+            routeDirectTradeProposal(data.proposal);
+        } else if (data.type === 'ACTION_DIRECT_TRADE_RESPONSE') {
+            executeDirectTradeResponse(data);
+        } else if (data.type === 'ACTION_DRAFT_PICK') {
+            processDraftPick(data.teamName, data.playerId); broadcastGameState();
+        } else if (data.type === 'ACTION_DRAFT_PASS') {
+            processDraftPass(data.teamName); broadcastGameState();
+        } else if (data.type === 'ACTION_RESIGN') {
+            processResignAction(data.teamName, data.playerId, data.optionIdx, data.accept); broadcastGameState();
+        } else if (data.type === 'ACTION_POSTING_DECISION') {
+            processPostingDecision(data.teamName, data.playerId, data.accept); broadcastGameState();
+        }
+    }
+
+    function handleGuestReceivedData(data) {
+        if (data.type === 'LOBBY_UPDATE') {
+            playersInRoom = data.players; renderLobbyList();
+            const myInfo = playersInRoom.find(p => p.peerId === myPeerId);
+            if (myInfo && myInfo.teamName !== myTeamName) {
+                myTeamName = myInfo.teamName;
+                document.getElementById('select-team').value = myTeamName;
+            }
+        } else if (data.type === 'GAME_START' || data.type === 'GAME_STATE_UPDATE') {
+            syncGameState(data.state);
+            document.getElementById('start-modal').style.display = 'none';
+        } else if (data.type === 'LOG_MSG') {
+            log(data.msg, false);
+        } else if (data.type === 'DIRECT_TRADE_PROPOSAL') {
+            incomingTradeProposals.push(data.proposal); updateInboxUI();
+            alert(`📬 [새로운 트레이드 제안] [${data.proposal.fromGM}] 단장(${data.proposal.fromTeam})으로부터 직접 트레이드 제안이 도착했습니다! '유저 트레이드' 탭을 확인하세요.`);
+        } else if (data.type === 'ERROR') {
+            alert(data.msg);
+        }
+    }
+
+    function broadcastLobbyState() {
+        const payload = { type: 'LOBBY_UPDATE', players: playersInRoom };
+        guestConns.forEach(c => c.send(payload));
+        renderLobbyList();
+    }
+
+    function renderLobbyList() {
+        document.getElementById('connected-count').innerText = playersInRoom.length;
+        const list = document.getElementById('connected-players-list');
+        list.innerHTML = '';
+        playersInRoom.forEach(p => {
+            list.innerHTML += `<div class="multi-player-chip ${p.isHost ? 'host' : ''}">${p.isHost ? '👑' : '🎮'} <b>${p.name}</b> (${p.teamName})</div>`;
+        });
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn && isHost) { startBtn.disabled = false; startBtn.innerText = "시즌 개막하기"; }
+    }
+
+    function copyRoomCode() {
+        navigator.clipboard.writeText(myPeerId);
+        alert("방 코드가 클립보드에 복사되었습니다!");
+    }
+
+    function onSelectTeamChange() {
+        myTeamName = document.getElementById('select-team').value;
+        salaryCap = TEAM_MARKET_SIZES[myTeamName].baseCap;
+        if (isHost && peer) {
+            const p = playersInRoom.find(x => x.peerId === myPeerId);
+            if (p) p.teamName = myTeamName;
+            broadcastLobbyState();
+        } else if (hostConn) {
+            hostConn.send({ type: 'CHANGE_TEAM', peerId: myPeerId, teamName: myTeamName });
+        }
+    }
+
+    function recordTeamChange(player, newTeamName, year) {
+        if (!player) return;
+        if (!player.teamHistory) player.teamHistory = [];
+        if (player.teamHistory.length === 0) {
+            player.teamHistory.push({ startYear: year, endYear: year, team: newTeamName });
+            return;
+        }
+        let lastH = player.teamHistory[player.teamHistory.length - 1];
+        if (lastH.team === newTeamName) {
+            lastH.endYear = year;
+        } else {
+            lastH.endYear = year; 
+            player.teamHistory.push({ startYear: year, endYear: year, team: newTeamName });
+        }
+    }
+
+    function syncRosterTeamHistory(teamName) {
+        let roster = allTeamRosters[teamName] || [];
+        roster.forEach(p => {
+            recordTeamChange(p, teamName, currentYear);
+        });
+    }
+
+    function startMultiGame() {
+        if (!isHost) return;
+
+        faSignedCountMap = {}; foreignSignedCountMap = {}; draftPicksCountMap = {}; draftPassedMap = {};
+        teamDeadCapMap = {}; teamLastSeasonCapPenaltyMap = {}; directTradeUsedMap = {};
+        emergencyRefillCountMap = {}; aiOverCapYearsMap = {}; aiTeamLifecycleMap = {};
+        postedPlayersMap = {}; postingCandidatesMap = {};
+
+        KBO_TEAMS.forEach(t => {
+            teamDeadCapMap[t] = 0.0; teamLastSeasonCapPenaltyMap[t] = 0.0;
+            draftPicksCountMap[t] = 0; draftPassedMap[t] = false; foreignSignedCountMap[t] = 0;
+            directTradeUsedMap[t] = false; emergencyRefillCountMap[t] = 0; aiOverCapYearsMap[t] = 0;
+            postedPlayersMap[t] = []; postingCandidatesMap[t] = [];
+
+            let phases = ['CONTENDER', 'PLATEAU', 'RISING'];
+            aiTeamLifecycleMap[t] = {
+                phase: phases[Math.floor(Math.random() * phases.length)],
+                years: Math.floor(Math.random() * 2),
+                duration: Math.floor(Math.random() * 2) + 2
+            };
+        });
+
+        foreignDraftOrder = [...KBO_TEAMS].sort(() => Math.random() - 0.5);
+
+        KBO_TEAMS.forEach(team => {
+            let roster = [];
+            let isHumanControlled = playersInRoom.some(p => p.teamName === team);
+
+            for (let i = 0; i < 28; i++) {
+                let pos = i < 5 ? '선발' : (i < 12 ? '불펜' : (i < 14 ? '포수' : (i < 21 ? '내야수' : '외야수')));
+                let age = Math.floor(Math.random() * 14) + 20;
+
+                let isStarter = (i < 5 || (i >= 5 && i < 8) || i === 12 || (i >= 14 && i < 18) || (i >= 21 && i < 24));
+                let curr = 6; 
+
+                if (i === 0 || i === 5 || i === 14) {
+                    curr = Math.floor(Math.random() * 2) + 7; 
+                } else if (isStarter) {
+                    curr = Math.floor(Math.random() * 2) + 6; 
+                } else {
+                    curr = Math.floor(Math.random() * 2) + 4; 
+                }
+
+                let pot = Math.max(curr, Math.min(9, curr + Math.floor(Math.random() * 2))); 
+                let p = createPlayer(pos, age, curr, pot, false, false, false, "", team);
+                p.tier = 2;
+                p.teamTenure = Math.floor(Math.random() * 5) + 1;
+                p.seasonStartCurrent = curr;
+
+                if (curr >= 12) p.salary = Math.floor(Math.random() * 3) + 10;
+                else if (curr >= 10) p.salary = Math.floor(Math.random() * 3) + 7;
+                else if (curr >= 8) p.salary = Math.floor(Math.random() * 2) + 4;
+                else if (curr === 7) p.salary = 3;
+                else if (curr >= 5) p.salary = Math.floor(Math.random() * 2) + 2;
+                else p.salary = 1;
+
+                p.lastChangeReason = "🔄 창단 로스터 구성";
+                recordTeamChange(p, team, currentYear);
+                roster.push(p);
+            }
+
+            let toxicCandidates = roster.filter(p => p.age >= 28 || p.current <= 6);
+            toxicCandidates.sort(() => Math.random() - 0.5);
+            let toxicTargetList = toxicCandidates.slice(0, 3);
+
+            toxicTargetList.forEach(tp => {
+                tp.salary = Math.floor(Math.random() * 4) + 8;
+                tp.contractYears = Math.floor(Math.random() * 2) + 2;
+                tp.isToxic = true;
+                tp.lastChangeReason = "💸 창단 악성계약 체결";
+            });
+
+            if (!isHumanControlled) {
+                let fPitcherCurr = 9;
+                let fPitcher = createPlayer('선발', Math.floor(Math.random() * 7) + 25, fPitcherCurr, 10, true, false, false, "", team);
+                fPitcher.salary = Math.floor(Math.random() * 3) + 10;
+                fPitcher.contractYears = 1; fPitcher.tier = 1;
+                fPitcher.lastChangeReason = "🌐 창단 용병 선발";
+                recordTeamChange(fPitcher, team, currentYear);
+                roster.push(fPitcher);
+
+                let fHitterCurr = 9;
+                let fHitter = createPlayer('외야수', Math.floor(Math.random() * 7) + 25, fHitterCurr, 10, true, false, false, "", team);
+                fHitter.salary = Math.floor(Math.random() * 3) + 10;
+                fHitter.contractYears = 1; fHitter.tier = 1;
+                fHitter.lastChangeReason = "🌐 창단 용병 타자";
+                recordTeamChange(fHitter, team, currentYear);
+                roster.push(fHitter);
+            }
+
+            allTeamRosters[team] = roster;
+            autoAssignFirstTierForTeam(team);
+        });
+
+        generateMarketPool();
+        resetStandings();
+
+        document.getElementById('start-modal').style.display = 'none';
+        document.getElementById('pip-window').style.display = 'flex';
+
+        const statePayload = getFullGameStatePayload();
+        if (guestConns.length > 0) guestConns.forEach(c => c.send({ type: 'GAME_START', state: statePayload }));
+        
+        syncGameState(statePayload);
+        setPipAlert("게임 개막 완료! 단장 멀티v1 가동 중");
+        log(`<b>${currentYear} 단장 멀티v1이 개막했습니다! (C/C+급 재계약 요구연봉 2~3억 원 미세 조정 완료)</b>`);
+    }
+
+    function getFullGameStatePayload() {
+        return {
+            currentYear, phase, salaryCap, playoffCapBonus,
+            teamDeadCapMap, teamLastSeasonCapPenaltyMap, directTradeUsedMap,
+            emergencyRefillCountMap, aiOverCapYearsMap, aiTeamLifecycleMap,
+            postedPlayersMap, postingCandidatesMap, gmLevel, gmExp,
+            allTeamRosters, marketPool, marketPreviewSummary, draftPool,
+            resignCandidatesMap, tradeProposalsMap, faSignedCountMap,
+            foreignSignedCountMap, draftPicksCountMap, draftPassedMap,
+            foreignDraftOrder, standings, seasonHistory, playersInRoom, psData
+        };
+    }
+
+    function broadcastGameState() {
+        if (!isHost) return;
+        const payload = { type: 'GAME_STATE_UPDATE', state: getFullGameStatePayload() };
+        if (guestConns.length > 0) guestConns.forEach(c => c.send(payload));
+        updateUI();
+    }
+
+    function syncGameState(state) {
+        currentYear = state.currentYear;
+        phase = state.phase;
+        playoffCapBonus = state.playoffCapBonus;
+        teamDeadCapMap = state.teamDeadCapMap || {};
+        teamLastSeasonCapPenaltyMap = state.teamLastSeasonCapPenaltyMap || {};
+        directTradeUsedMap = state.directTradeUsedMap || {};
+        emergencyRefillCountMap = state.emergencyRefillCountMap || {};
+        aiOverCapYearsMap = state.aiOverCapYearsMap || {};
+        aiTeamLifecycleMap = state.aiTeamLifecycleMap || {};
+        postedPlayersMap = state.postedPlayersMap || {};
+        postingCandidatesMap = state.postingCandidatesMap || {};
+        
+        salaryCap = TEAM_MARKET_SIZES[myTeamName] ? TEAM_MARKET_SIZES[myTeamName].baseCap : state.salaryCap;
+        gmLevel = state.gmLevel || 1;
+        gmExp = state.gmExp || 0;
+        allTeamRosters = state.allTeamRosters;
+        marketPool = state.marketPool;
+        marketPreviewSummary = state.marketPreviewSummary || {};
+        draftPool = state.draftPool || [];
+        resignCandidatesMap = state.resignCandidatesMap || {};
+        tradeProposalsMap = state.tradeProposalsMap || {};
+        faSignedCountMap = state.faSignedCountMap || {};
+        foreignSignedCountMap = state.foreignSignedCountMap || {};
+        draftPicksCountMap = state.draftPicksCountMap || {};
+        draftPassedMap = state.draftPassedMap || {};
+        foreignDraftOrder = state.foreignDraftOrder || [];
+        standings = state.standings;
+        seasonHistory = state.seasonHistory || [];
+        if (state.playersInRoom) playersInRoom = state.playersInRoom;
+        if (state.psData) psData = state.psData;
+
+        const myInfo = playersInRoom.find(p => p.peerId === myPeerId);
+        if (myInfo) mySeasonReady = !!myInfo.isSeasonReady;
+
+        updateUI();
+    }
+
+    function valToGrade(val) {
+        let idx = Math.round(val) - 1;
+        if (idx < 0) idx = 0;
+        if (idx >= SUB_GRADES.length) idx = SUB_GRADES.length - 1;
+        return SUB_GRADES[idx];
+    }
+
+    function gradeToVal(g) {
+        if (typeof g === 'number') return g;
+        let idx = SUB_GRADES.indexOf(g);
+        if (idx !== -1) return idx + 1;
+        return 6;
+    }
+
+    function getGradeBadgeHTML(valOrStr) {
+        let gStr = typeof valOrStr === 'number' ? valToGrade(valOrStr) : valOrStr;
+        const colorMap = {
+            'S+': { bg: '#800020', text: '#ffffff' }, 'S':  { bg: '#991b1b', text: '#ffffff' },
+            'A+': { bg: '#b91c1c', text: '#ffffff' }, 'A':  { bg: '#c2410c', text: '#ffffff' },
+            'A-': { bg: '#d97706', text: '#ffffff' }, 'B+': { bg: '#1d4ed8', text: '#ffffff' },
+            'B':  { bg: '#2563eb', text: '#ffffff' }, 'B-': { bg: '#3b82f6', text: '#ffffff' },
+            'C+': { bg: '#15803d', text: '#ffffff' }, 'C':  { bg: '#16a34a', text: '#ffffff' },
+            'C-': { bg: '#22c55e', text: '#ffffff' }, 'D+': { bg: '#0f766e', text: '#ffffff' },
+            'D':  { bg: '#0d9488', text: '#ffffff' }, 'D-': { bg: '#14b8a6', text: '#ffffff' },
+            'F':  { bg: '#64748b', text: '#ffffff' }, '?':   { bg: '#64748b', text: '#ffffff' }
+        };
+        const style = colorMap[gStr] || { bg: '#64748b', text: '#ffffff' };
+        return `<span style="background-color:${style.bg}; color:${style.text}; padding:2px 6px; border-radius:4px; font-weight:800; display:inline-block; min-width:32px; text-align:center; font-size:0.78rem;">${gStr}</span>`;
+    }
+
+    function createPlayer(pos, age, currVal, potVal, isForeign = false, isFA = false, isLegend = false, legendName = "", initialTeam = "") {
+        let curr = typeof currVal === 'number' ? currVal : gradeToVal(currVal || 'C');
+        let pot = typeof potVal === 'number' ? potVal : gradeToVal(potVal || 'B');
+
+        if (isLegend) {
+            pot = typeof potVal === 'number' ? potVal : Math.floor(Math.random() * 4) + 12;
+            curr = typeof currVal === 'number' ? currVal : Math.floor(Math.random() * 2) + 8;
+            if (curr > pot) curr = pot;
+        } else {
+            pot = typeof potVal === 'number' ? potVal : Math.min(12, Math.max(curr, Math.floor(Math.random() * 3) + 5)); 
+            if (pot < curr) pot = curr;
+        }
+
+        if (age <= 23 && !isForeign && !isLegend) {
+            if (curr > 4) curr = 4; 
+            if (curr < 2) curr = 2; 
+        }
+
+        let name = legendName || (isForeign ? getRandomForeignName() : getRandomKoreanName());
+        
+        let baseSal = 1;
+        if (curr >= 15) baseSal = 18;
+        else if (curr === 14) baseSal = 15;
+        else if (curr === 13) baseSal = 12;
+        else if (curr === 12) baseSal = 10;
+        else if (curr === 11) baseSal = 8;
+        else if (curr === 10) baseSal = 6;
+        else if (curr === 9) baseSal = 5;
+        else if (curr === 8) baseSal = 4;
+        else if (curr === 7) baseSal = 3.5;
+        else if (curr === 6) baseSal = 2.5;
+        else if (curr === 5) baseSal = 2;
+        else baseSal = 1;
+
+        let sal = Math.max(1, Math.round(baseSal));
+        if (curr <= 4) sal = 1;
+
+        if (isForeign) sal += 1;
+
+        let cYears = isForeign ? 1 : (Math.floor(Math.random() * 3) + 2);
+
+        let initialTeamHistory = [];
+        if (initialTeam) {
+            initialTeamHistory.push({ startYear: currentYear, endYear: currentYear, team: initialTeam });
+        }
+
+        return {
+            id: Math.random().toString(36).substr(2, 9),
+            name,
+            position: pos || POSITIONS[Math.floor(Math.random() * POSITIONS.length)],
+            age: age || (isLegend ? 22 : Math.floor(Math.random() * 12) + 20),
+            current: curr,
+            potential: pot,
+            peakCurrent: curr, 
+            salary: sal,
+            contractYears: cYears,
+            tier: 2,
+            isLegend: !!isLegend,
+            isForeign: !!isForeign,
+            isFA: !!isFA,
+            isToxic: false,
+            lockState: 0, 
+            isLockedToTier2: false,
+            isUntradeable: false,
+            teamTenure: 0,
+            seasonStartCurrent: curr,
+            hasMLBBadge: false,
+            postedMLBYears: 0,
+            lastChangeReason: "🔄 신규 계약",
+            growthHistory: [],
+            teamHistory: initialTeamHistory, 
+            championships: [] 
+        };
+    }
+
+    function openPlayerBioModal(playerId) {
+        let player = null;
+        for (let t in allTeamRosters) {
+            let p = allTeamRosters[t].find(x => x.id === playerId);
+            if (p) { player = p; break; }
+        }
+        if (!player) {
+            for (let t in postedPlayersMap) {
+                let p = postedPlayersMap[t].find(x => x.id === playerId);
+                if (p) { player = p; break; }
+            }
+        }
+        if (!player) {
+            player = marketPool.foreign.find(x => x.id === playerId) || marketPool.fa.find(x => x.id === playerId) || draftPool.find(x => x.id === playerId);
+        }
+        if (!player) return;
+
+        const modal = document.getElementById('player-bio-pip');
+        const body = document.getElementById('bio-pip-body');
+        const headerTitle = document.getElementById('bio-header-title');
+
+        headerTitle.innerHTML = `📜 <b>${player.name}</b> 상세 약력 리포트`;
+
+        let peakGrade = valToGrade(player.peakCurrent || player.current);
+        let teamHistoryHTML = '<li>소속 이력 없음</li>';
+        if (player.teamHistory && player.teamHistory.length > 0) {
+            teamHistoryHTML = player.teamHistory.map(th => {
+                let yearStr = (th.startYear === th.endYear) ? `${th.startYear}년` : `${th.startYear}~${th.endYear}년`;
+                return `<li><b>${yearStr}</b> ${th.team}</li>`;
+            }).join('');
+        }
+
+        let championshipsHTML = '0회';
+        if (player.championships && player.championships.length > 0) {
+            championshipsHTML = player.championships.map(c => `<span style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-weight:800; margin-right:4px;">🏆 ${c}</span>`).join(' ');
+        }
+
+        let mlbStatusText = player.postedMLBYears > 0 ? `${player.postedMLBYears}년 경력` : '없음';
+
+        body.innerHTML = `
+            <div class="bio-card-section" style="background:#eff6ff; border-color:#bfdbfe;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <b style="font-size:1.1rem; color:var(--primary);">${player.name}</b> ${getPlayerBadgesHTML(player)}
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+                            ${player.position} | 나이: ${player.age}세 | 연봉: ${player.salary}억 원 | 근속: ${player.teamTenure}년
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:0.75rem; color:var(--text-muted);">현재/잠재</span><br>
+                        ${getGradeBadgeHTML(player.current)} / ${getGradeBadgeHTML(player.potential)}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>👑 통산 우승 경력</span>
+                    <span style="color:var(--accent-gold); font-weight:bold;">${player.championships ? player.championships.length : 0}회 달성</span>
+                </div>
+                <div style="font-size:0.8rem; margin-top:4px;">${championshipsHTML}</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>⭐ 통산 최고 능력치</span>
+                    <span style="color:var(--accent-red); font-weight:bold;">${peakGrade}</span>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">전성기 시절 달성한 최고 기량 등급입니다.</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>✈️ 메이저리그(MLB) 경력</span>
+                    <span style="color:var(--accent-blue); font-weight:bold;">${mlbStatusText}</span>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">${player.isPostedInMLB ? '현재 메이저리그에서 활약 중입니다.' : '해외 진출 이력 정보입니다.'}</div>
+            </div>
+
+            <div class="bio-card-section">
+                <div class="bio-card-title">
+                    <span>🏢 구단 소속 기록</span>
+                </div>
+                <ul style="padding-left:18px; font-size:0.78rem; line-height:1.6; color:var(--text-dark);">
+                    ${teamHistoryHTML}
+                </ul>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    function closePlayerBioModal() { document.getElementById('player-bio-pip').style.display = 'none'; }
+    function getMyRoster() { return allTeamRosters[myTeamName] || []; }
+    function getMyTotalSalary() { return getMyRoster().reduce((s, p) => s + p.salary, 0); }
+
+    function calculateTeamPowerBreakdown(roster) {
+        const tier1Roster = roster.filter(p => p.tier === 1);
+        const posGroups = { '선발': [], '불펜': [], '포수': [], '내야수': [], '외야수': [] };
+        tier1Roster.forEach(p => posGroups[p.position].push(p.current));
+
+        const getPosSlotWeightedAvg = (arr, slots) => {
+            if (arr.length === 0) return 1.0;
+            arr.sort((a, b) => b - a);
+            let totalWeightedSum = 0, totalWeight = 0, playerIdx = 0;
+
+            slots.forEach(slot => {
+                for (let k = 0; k < slot.count; k++) {
+                    let val = (playerIdx < arr.length) ? arr[playerIdx] : 1.0;
+                    totalWeightedSum += val * slot.weight;
+                    totalWeight += slot.weight;
+                    playerIdx++;
+                }
+            });
+            return totalWeight > 0 ? totalWeightedSum / totalWeight : 1.0;
+        };
+
+        const pwStarter = getPosSlotWeightedAvg(posGroups['선발'], POS_SLOTS['선발']);
+        const pwReliever = getPosSlotWeightedAvg(posGroups['불펜'], POS_SLOTS['불펜']);
+        const pwCatcher = getPosSlotWeightedAvg(posGroups['포수'], POS_SLOTS['포수']);
+        const pwInfield = getPosSlotWeightedAvg(posGroups['내야수'], POS_SLOTS['내야수']);
+        const pwOutfield = getPosSlotWeightedAvg(posGroups['외야수'], POS_SLOTS['외야수']);
+
+        const overall = (pwStarter * 0.25) + (pwReliever * 0.15) + (pwCatcher * 0.10) + (pwInfield * 0.25) + (pwOutfield * 0.25);
+
+        return {
+            overallNum: overall,
+            overallGrade: valToGrade(overall),
+            starterGrade: valToGrade(pwStarter),
+            relieverGrade: valToGrade(pwReliever),
+            catcherGrade: valToGrade(pwCatcher),
+            infieldGrade: valToGrade(pwInfield),
+            outfieldGrade: valToGrade(pwOutfield),
+            posPowerRaw: { '선발': pwStarter, '불펜': pwReliever, '포수': pwCatcher, '내야수': pwInfield, '외야수': pwOutfield }
+        };
+    }
+
+    function getSlotRoleForPlayer(roster, player) {
+        if (player.tier !== 1) return null;
+        const posRoster = roster.filter(p => p.tier === 1 && p.position === player.position)
+                                .sort((a,b) => b.current - a.current);
+        const rankIdx = posRoster.findIndex(p => p.id === player.id);
+        if (rankIdx === -1) return null;
+
+        const slots = POS_SLOTS[player.position];
+        let runningCount = 0;
+        for (let slot of slots) {
+            runningCount += slot.count;
+            if (rankIdx < runningCount) return slot.name;
+        }
+        return '예비';
+    }
+
+    function toggleTier(id) {
+        let myRoster = getMyRoster();
+        const player = myRoster.find(p => p.id === id);
+        if (!player) return;
+
+        if (player.tier === 1) {
+            if (player.current >= gradeToVal('B-')) {
+                alert(`[2군 강등 거부] ${player.name} 선수는 주전급으로 2군 말소를 거부합니다.`);
+                return;
+            }
+            player.tier = 2;
+        } else {
+            if (player.isForeign) {
+                let foreignTier1Count = myRoster.filter(p => p.tier === 1 && p.isForeign).length;
+                if (foreignTier1Count >= 2) {
+                    alert("[1군 용병 등록 제한] 외국인 용병은 1군 엔트리에 최대 2명까지만 등록할 수 있습니다.");
+                    return;
+                }
+            }
+
+            if (myRoster.filter(p => p.tier === 1).length >= 28) {
+                alert("1군 정원은 최대 28명입니다.");
+                return;
+            }
+            player.tier = 1;
+        }
+
+        if (isHost) broadcastGameState();
+        else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: myRoster });
+    }
+
+    function toggleLockTier2(id) {
+        let myRoster = getMyRoster();
+        const player = myRoster.find(p => p.id === id);
+        if (!player) return;
+
+        if (player.lockState === undefined) {
+            player.lockState = player.isLockedToTier2 ? 1 : 0;
+        }
+
+        player.lockState = (player.lockState + 1) % 3;
+
+        if (player.lockState === 1) {
+            player.isLockedToTier2 = true;
+            player.isUntradeable = false;
+            player.tier = 2;
+        } else if (player.lockState === 2) {
+            player.isLockedToTier2 = true;
+            player.isUntradeable = true;
+            player.tier = 2;
+        } else {
+            player.isLockedToTier2 = false;
+            player.isUntradeable = false;
+        }
+
+        if (isHost) broadcastGameState();
+        else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: myRoster });
+    }
+
+    function toggleRosterSort(field) {
+        if (rosterSortField === field) rosterSortOrder = (rosterSortOrder === 'asc') ? 'desc' : 'asc';
+        else { rosterSortField = field; rosterSortOrder = 'desc'; }
+        renderRoster();
+    }
+
+    function filterRoster(filter) {
+        currentPosFilter = filter;
+        document.querySelectorAll('.pos-filter').forEach(btn => btn.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+        renderRoster();
+    }
+
+    function renderRoster() {
+        const list = document.getElementById('roster-list');
+        list.innerHTML = '';
+        const myRoster = getMyRoster();
+
+        let filtered = [...myRoster];
+        if (currentPosFilter === '1군') filtered = myRoster.filter(p => p.tier === 1);
+        else if (currentPosFilter === '2군') filtered = myRoster.filter(p => p.tier === 2);
+        else if (currentPosFilter === 'POSTING') {
+            let activeCandidates = myRoster.filter(p => 
+                (!p.isLegend && p.teamTenure >= 7 && p.current >= 12) || 
+                (p.isLegend && p.teamTenure >= 5 && p.current >= 12) || 
+                p.hasMLBBadge
+            );
+            let postedMLBList = (postedPlayersMap[myTeamName] || []).map(p => ({ ...p, isPostedInMLB: true, tier: 0 }));
+            filtered = [...activeCandidates, ...postedMLBList];
+        } else if (currentPosFilter !== 'ALL') {
+            filtered = myRoster.filter(p => p.tier === 1 && p.position === currentPosFilter);
+        }
+
+        filtered.sort((a, b) => {
+            let valA = a[rosterSortField]; let valB = b[rosterSortField];
+            return rosterSortOrder === 'asc' ? valA - valB : valB - valA;
+        });
+
+        filtered.forEach(p => {
+            const displaySalary = `<b>${p.salary}억 원</b>`;
+            const badgesHTML = getPlayerBadgesHTML(p);
+
+            let slotTagHTML = '';
+            if (p.tier === 1) {
+                const role = getSlotRoleForPlayer(myRoster, p);
+                if (role === '주전') slotTagHTML = `<span class="slot-badge-starter">🟢 주전</span>`;
+                else if (role === '후보') slotTagHTML = `<span class="slot-badge-backup">🔵 후보</span>`;
+                else if (role === '예비') slotTagHTML = `<span class="slot-badge-reserve">🟣 예비</span>`;
+            }
+
+            let isProtected = (p.tier === 2 && p.age < 24 && !p.isForeign);
+            let protectionTagHTML = isProtected ? `<span class="protected-badge">🛡️ 보존중</span>` : '';
+
+            let lockBtnClass = 'btn-info';
+            let lockBtnText = '🔓 해제';
+            if (p.lockState === 1 || (p.isLockedToTier2 && !p.isUntradeable)) {
+                lockBtnClass = 'btn-warning';
+                lockBtnText = '🔒 2군고정';
+            } else if (p.lockState === 2 || p.isUntradeable) {
+                lockBtnClass = 'btn-danger';
+                lockBtnText = '🚫 트레이드불가';
+            }
+
+            if (p.isPostedInMLB) {
+                list.innerHTML += `
+                    <tr style="background:#f0f9ff;" class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                        <td><span class="tier-badge" style="background:#0284c7; color:#fff;">✈️ MLB</span></td>
+                        <td><b>${p.position}</b></td>
+                        <td><b>${p.name}</b>${badgesHTML}</td>
+                        <td>${p.age}세 (해외 진출 중)</td>
+                        <td>${getGradeBadgeHTML(p.current)}</td>
+                        <td>${getGradeBadgeHTML(p.potential)}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td colspan="2" style="color:var(--accent-blue); font-weight:bold;">✈️ 메이저리그 진출 활약 중</td>
+                    </tr>
+                `;
+            } else {
+                list.innerHTML += `
+                    <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                        <td><span class="tier-badge ${p.tier === 1 ? 'tier-1' : 'tier-2'}">${p.tier === 1 ? '1군' : '2군'}</span> ${slotTagHTML}</td>
+                        <td><b>${p.position}</b></td>
+                        <td><b>${p.name}</b>${badgesHTML}</td>
+                        <td>${p.age}세 (${p.teamTenure}년)</td>
+                        <td>${getGradeBadgeHTML(p.current)}</td>
+                        <td>${getGradeBadgeHTML(p.potential)}</td>
+                        <td>${displaySalary}</td>
+                        <td><b>${p.contractYears}년</b>${protectionTagHTML}</td>
+                        <td>
+                            <button class="btn ${lockBtnClass}" style="font-size:0.72rem;" onclick="toggleLockTier2('${p.id}')">
+                                ${lockBtnText}
+                            </button>
+                        </td>
+                        <td>
+                            <button class="btn ${p.tier === 1 ? 'btn-warning' : 'btn-success'}" onclick="toggleTier('${p.id}')">
+                                ${p.tier === 1 ? '2군 말소' : '1군 등록'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        document.getElementById('roster-count').innerText = myRoster.length;
+        document.getElementById('emergency-refill-text').innerText = emergencyRefillCountMap[myTeamName] || 0;
+    }
+
+    function autoFillMissingPlayers() {
+        let myRoster = getMyRoster();
+        let currentRefillCount = emergencyRefillCountMap[myTeamName] || 0;
+
+        if (currentRefillCount >= 3) {
+            alert("[긴급 보충 한도 초과] 긴급 육성선수 보충은 한 시즌에 최대 3회까지만 이용할 수 있습니다.");
+            return;
+        }
+
+        let addedCount = 0;
+        POSITIONS.forEach(pos => {
+            let slots = POS_SLOTS[pos];
+            let reqMin = slots.reduce((s, x) => s + x.count, 0);
+            let currentPosCount = myRoster.filter(p => p.position === pos).length;
+            while (currentPosCount < reqMin) {
+                let curr = Math.floor(Math.random() * 2) + 2; 
+                let pot = Math.max(curr, Math.floor(Math.random() * 3) + 4); 
+                let p = createPlayer(pos, 20, curr, pot, false, false, false, "", myTeamName);
+                p.salary = 1; p.contractYears = 2; p.tier = 2; p.lastChangeReason = "🛠️ 긴급 육성 보충";
+                recordTeamChange(p, myTeamName, currentYear);
+                myRoster.push(p); currentPosCount++; addedCount++;
+            }
+        });
+
+        while (myRoster.length < 28) {
+            let randomPos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+            let curr = Math.floor(Math.random() * 2) + 2;
+            let pot = Math.max(curr, Math.floor(Math.random() * 3) + 4);
+            let p = createPlayer(randomPos, 20, curr, pot, false, false, false, "", myTeamName);
+            p.salary = 1; p.contractYears = 2; p.tier = 2; p.lastChangeReason = "🛠️ 긴급 육성 보충";
+            recordTeamChange(p, myTeamName, currentYear);
+            myRoster.push(p); addedCount++;
+        }
+
+        emergencyRefillCountMap[myTeamName] = currentRefillCount + 1;
+        allTeamRosters[myTeamName] = myRoster;
+        autoAssignFirstTier();
+
+        log(`🛠️ <b>[긴급 보충 사용 (${emergencyRefillCountMap[myTeamName]}/3회)]</b> 부족한 자리를 긴급 육성선수(${addedCount}명)로 충원했습니다.`);
+    }
+
+    function autoAssignFirstTierForTeam(teamName) {
+        let roster = allTeamRosters[teamName] || [];
+        roster.forEach(p => p.tier = 2);
+
+        let selectedIds = new Set();
+        let foreignTier1Count = 0;
+
+        POSITIONS.forEach(pos => {
+            let slots = POS_SLOTS[pos];
+            let reqCount = slots.reduce((s, x) => s + x.count, 0);
+            let candidates = roster
+                .filter(p => p.position === pos && !p.isLockedToTier2)
+                .sort((a, b) => (b.current - a.current) || (b.potential - a.potential));
+
+            let added = 0;
+            for (let p of candidates) {
+                if (added >= reqCount) break;
+                if (p.isForeign && foreignTier1Count >= 2) continue;
+
+                p.tier = 1; selectedIds.add(p.id);
+                if (p.isForeign) foreignTier1Count++;
+                added++;
+            }
+        });
+
+        let currentTier1Count = selectedIds.size;
+        if (currentTier1Count < 28) {
+            let remaining = roster
+                .filter(p => !selectedIds.has(p.id) && !p.isLockedToTier2)
+                .sort((a, b) => (b.current - a.current) || (b.potential - a.potential));
+
+            for (let p of remaining) {
+                if (currentTier1Count >= 28) break;
+                if (p.isForeign && foreignTier1Count >= 2) continue;
+
+                p.tier = 1; selectedIds.add(p.id);
+                if (p.isForeign) foreignTier1Count++;
+                currentTier1Count++;
+            }
+        }
+
+        allTeamRosters[teamName] = roster;
+    }
+
+    function autoAssignFirstTier() {
+        autoAssignFirstTierForTeam(myTeamName);
+        if (isHost) broadcastGameState();
+        else hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: getMyRoster() });
+    }
+
+    function generateMarketPool() {
+        let pCount = Math.max(1, playersInRoom.length);
+        let foreignCount = pCount * 3;
+        let faCount = pCount * 4;
+
+        marketPool.foreign = Array.from({length: foreignCount}, () => {
+            let isJrLegend = Math.random() < 0.04;
+            let age = Math.floor(Math.random() * 10) + 23;
+            let jrName = isJrLegend ? MLB_JR_LEGENDS[Math.floor(Math.random() * MLB_JR_LEGENDS.length)] : "";
+
+            let curr = isJrLegend ? Math.floor(Math.random() * 2) + 11 : Math.floor(Math.random() * 2) + 9;
+            let pot = isJrLegend ? 12 : Math.min(12, curr + 1);
+
+            let p = createPlayer(null, age, curr, pot, true, false, isJrLegend, jrName);
+            p.salary = Math.max(1, Math.round(p.salary * 1.05) + 1);
+            p.contractYears = 1;
+            return p;
+        });
+
+        marketPool.fa = Array.from({length: faCount}, () => {
+            let age = Math.floor(Math.random() * 8) + 27; 
+            let curr = Math.min(15, Math.floor(Math.random() * 8) + 5); 
+            let pot = Math.max(curr, Math.min(15, curr + (Math.random() < 0.35 ? 1 : 0)));
+
+            let p = createPlayer(null, age, curr, pot, false, true, false);
+            p.isFA = true;
+            
+            // FA 등급별 정밀 연봉 요구 스케일 조정
+            let faBaseSalary = 1;
+            if (curr >= 15) {        // S+ (15점)
+                faBaseSalary = Math.floor(Math.random() * 3) + 18; // 18~20억
+            } else if (curr === 14) { // S (14점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 15; // 15~16억
+            } else if (curr === 13) { // A+ (13점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 12; // 12~13억
+            } else if (curr === 12) { // A0 (12점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 10; // 10~11억
+            } else if (curr === 11) { // A- (11점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 8;  // 8~9억
+            } else if (curr === 10) { // B+ (10점)
+                faBaseSalary = Math.floor(Math.random() * 2) + 6;  // 6~7억
+            } else if (curr === 9) {  // B (9점)
+                faBaseSalary = 5;                                  // 5억 고정
+            } else if (curr === 8) {  // B- (8점)
+                faBaseSalary = 4;                                  // 4억 고정
+            } else if (curr === 7) {  // C+ (7점)
+                faBaseSalary = 3;                                  // 3억 고정
+            } else if (curr === 6) {  // C (6점)
+                faBaseSalary = 3;                                  // 3억 고정
+            } else if (curr === 5) {  // C- (5점)
+                faBaseSalary = 2;                                  // 2억 고정
+            } else {                  // D+ 이하
+                faBaseSalary = 1;                                  // 1억 고정
+            }
+
+            let faPremium = (age <= 31) ? 1.10 : 1.0;
+            p.salary = Math.max(1, Math.round(faBaseSalary * faPremium));
+
+            if (p.age >= 33 && p.contractYears > 2) p.contractYears = 2;
+
+            return p;
+        });
+
+        let topFA = [...marketPool.fa].sort((a,b) => b.current - a.current).slice(0, 3);
+        let topForeign = [...marketPool.foreign].sort((a,b) => b.current - a.current).slice(0, 2);
+
+        marketPreviewSummary = {
+            year: currentYear,
+            faHighlights: topFA.map(p => `${p.position} <b>${p.name}</b> (${valToGrade(p.current)})`).join(', '),
+            foreignHighlights: topForeign.map(p => `${p.position} <b>${p.name}</b> (${valToGrade(p.current)})`).join(', ')
+        };
+    }
+
+    let currentMarketType = 'foreign';
+    function switchMarket(type) {
+        currentMarketType = type;
+        document.querySelectorAll('.market-btn').forEach(btn => btn.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+        renderMarket();
+    }
+
+    function renderMarket() {
+        const previewYearEl = document.getElementById('preview-year-text');
+        if (previewYearEl) previewYearEl.innerText = currentYear;
+
+        const previewContentEl = document.getElementById('market-preview-content');
+        if (previewContentEl) {
+            let faStr = marketPreviewSummary.faHighlights || '스카우팅 데이터 집계 중';
+            let foreignStr = marketPreviewSummary.foreignHighlights || '스카우팅 데이터 집계 중';
+
+            previewContentEl.innerHTML = `
+                📌 <b>스카우팅 리포트 (${currentYear}년 영입 시장 동적 분석)</b>:<br>
+                • 🔥 <b>주요 FA 자원 (C~A급 스펙트럼)</b>: ${faStr}<br>
+                • 🌐 <b>주요 외국인 특급 자원 (평균 B~B+급)</b>: ${foreignStr}<br>
+                💡 <i>FA 시장으로 영입된 선수는 첫 계약 기간 동안 트레이드 불가 상태로 관리됩니다.</i>
+            `;
+        }
+
+        const list = document.getElementById('market-list');
+        list.innerHTML = '';
+        const pool = marketPool[currentMarketType] || [];
+        pool.forEach(p => {
+            const badgesHTML = getPlayerBadgesHTML(p);
+            list.innerHTML += `
+                <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                    <td>${p.position}</td>
+                    <td><b>${p.name}</b>${badgesHTML}</td>
+                    <td>${p.age}세</td>
+                    <td>${getGradeBadgeHTML(p.current)}</td>
+                    <td>${getGradeBadgeHTML(p.potential)}</td>
+                    <td><b style="color:var(--accent-red);">${p.salary}억 원</b></td>
+                    <td>${p.contractYears}년</td>
+                    <td><button class="btn btn-info" onclick="signPlayer('${p.id}')">영입</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    function processMarketSign(teamName, marketType, playerId) {
+        let pool = marketPool[marketType];
+        if (!pool) return;
+        let player = pool.find(p => p.id === playerId);
+        if (!player) return;
+
+        if (marketType === 'fa') {
+            faSignedCountMap[teamName] = (faSignedCountMap[teamName] || 0) + 1;
+            player.isFA = true; 
+        } else if (marketType === 'foreign') {
+            foreignSignedCountMap[teamName] = (foreignSignedCountMap[teamName] || 0) + 1;
+        }
+
+        player.tier = 2;
+        player.teamTenure = 0; 
+        player.seasonStartCurrent = player.current;
+        player.lastChangeReason = "🌐 신규 영입";
+        
+        recordTeamChange(player, teamName, currentYear);
+
+        if (!allTeamRosters[teamName]) allTeamRosters[teamName] = [];
+        allTeamRosters[teamName].push(player);
+        marketPool[marketType] = pool.filter(p => p.id !== playerId);
+    }
+
+    function signPlayer(id) {
+        const pool = marketPool[currentMarketType];
+        const player = pool.find(p => p.id === id);
+        if (!player) return;
+
+        let myRoster = getMyRoster();
+
+        if (currentMarketType === 'fa') {
+            let faCount = faSignedCountMap[myTeamName] || 0;
+            if (faCount >= 3) {
+                alert("[FA 영입 한도 초과] 한 시즌에 FA 선수는 최대 3명까지만 영입할 수 있습니다.");
+                return;
+            }
+        }
+
+        if (player.isForeign) {
+            let totalForeignCount = myRoster.filter(p => p.isForeign).length;
+            if (totalForeignCount >= 2) {
+                alert("[외국인 영입 불가] 한 구단당 외국인 용병은 최대 2명까지만 보유할 수 있습니다.");
+                return;
+            }
+        }
+
+        let totalSalary = getMyTotalSalary();
+        let effectiveCap = getEffectiveCap(myTeamName);
+        let maxCapWithBuffer = effectiveCap * 1.3;
+
+        if (totalSalary + player.salary > maxCapWithBuffer) {
+            alert(`[소프트캡 상한선 초과] 현재 실효 샐러리캡 허용 한도를 초과하여 영입할 수 없습니다.`);
+            return;
+        }
+
+        addGMExp(3);
+
+        if (isHost) {
+            processMarketSign(myTeamName, currentMarketType, id);
+            broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_MARKET_SIGN', teamName: myTeamName, marketType: currentMarketType, playerId: id });
+        }
+    }
+
+    function calculateTradeValue(player) {
+        if (!player) return 0;
+
+        let currScore = Math.pow(player.current, 1.4) * 8;
+        let potGap = Math.max(0, player.potential - player.current);
+
+        let ageFactor = 1.0;
+        if (player.age <= 23) ageFactor = 1.30;
+        else if (player.age <= 26) ageFactor = 1.15;
+        else if (player.age <= 29) ageFactor = 1.00;
+        else if (player.age <= 32) ageFactor = 0.85;
+        else ageFactor = Math.max(0.3, 1.0 - (player.age - 32) * 0.15);
+
+        let potScore = potGap * 6 * (player.age <= 26 ? 1.5 : 0.8);
+        let baseVal = (currScore + potScore) * ageFactor;
+
+        let expectedSalary = Math.max(1, player.current * 0.6);
+        let salaryRatio = player.salary / expectedSalary;
+
+        let salaryMult = 1.0;
+        if (salaryRatio > 1.3) {
+            salaryMult = Math.max(0.5, 1.0 - (salaryRatio - 1.3) * 0.35); 
+        } else if (salaryRatio < 0.7) {
+            salaryMult = 1.15; 
+        }
+
+        let legendMult = player.isLegend ? 1.10 : 1.0;
+        return Math.round(baseVal * salaryMult * legendMult);
+    }
+
+    function generateCPUTradeProposals() {
+        if (!isHost) return;
+        tradeProposalsMap = {};
+
+        const humanTeamNames = playersInRoom.map(p => p.teamName);
+        const aiOnlyTeams = KBO_TEAMS.filter(t => !humanTeamNames.includes(t));
+
+        KBO_TEAMS.forEach(targetTeam => {
+            let candidateAiTeams = aiOnlyTeams.filter(t => t !== targetTeam);
+            if (candidateAiTeams.length === 0) candidateAiTeams = KBO_TEAMS.filter(t => t !== targetTeam);
+
+            let myRoster = (allTeamRosters[targetTeam] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+            if (myRoster.length === 0) return;
+
+            let proposals = [];
+
+            for (let k = 0; k < 5; k++) {
+                let cpuTeam = candidateAiTeams[Math.floor(Math.random() * candidateAiTeams.length)];
+                let aiRoster = (allTeamRosters[cpuTeam] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+                if (aiRoster.length === 0) continue;
+
+                let lifecycleState = aiTeamLifecycleMap[cpuTeam] ? aiTeamLifecycleMap[cpuTeam].phase : 'PLATEAU';
+                let offerPlayer = null, myPlayer = null, tradeTag = '⚖️ [전력 보강 오퍼]';
+
+                let aiPowerBreakdown = calculateTeamPowerBreakdown(aiRoster);
+                let lowestPos = '선발';
+                let lowestVal = 99;
+                for (let pos in aiPowerBreakdown.posPowerRaw) {
+                    if (aiPowerBreakdown.posPowerRaw[pos] < lowestVal) {
+                        lowestVal = aiPowerBreakdown.posPowerRaw[pos];
+                        lowestPos = pos;
+                    }
+                }
+
+                let wantsNeedPos = Math.random() < 0.55; 
+
+                if (wantsNeedPos) {
+                    let needPosTargetList = myRoster.filter(p => p.position === lowestPos).sort((a,b) => b.current - a.current);
+                    if (needPosTargetList.length > 0) {
+                        myPlayer = needPosTargetList[0];
+                        tradeTag = `🎯 [${lowestPos} 보강을 위해 손해 감수 오퍼]`;
+                    }
+                }
+
+                if (!myPlayer) {
+                    if (lifecycleState === 'CONTENDER') {
+                        tradeTag = '👑 [우승 승부수: 손해 무릅쓴 오퍼]';
+                        let humanStarters = [...myRoster].sort((a,b) => b.current - a.current);
+                        myPlayer = humanStarters[Math.floor(Math.random() * Math.min(3, humanStarters.length))] || myRoster[0];
+                    } else if (lifecycleState === 'REBUILDING') {
+                        tradeTag = '🏗️ [리빌딩: 유망주 탐색 오퍼]';
+                        let humanProspects = myRoster.filter(p => p.age <= 25).sort((a,b) => b.potential - a.potential);
+                        myPlayer = humanProspects[0] || myRoster[Math.floor(Math.random() * myRoster.length)];
+                    } else {
+                        tradeTag = '⚖️ [맞춤 전력 교환 오퍼]';
+                        myPlayer = myRoster[Math.floor(Math.random() * myRoster.length)];
+                    }
+                }
+
+                let myVal = calculateTradeValue(myPlayer);
+
+                let validOffers = [];
+                if (wantsNeedPos || lifecycleState === 'CONTENDER') {
+                    validOffers = aiRoster.filter(p => {
+                        let val = calculateTradeValue(p);
+                        return val >= myVal * 1.02 && val <= myVal * 1.30; 
+                    });
+                }
+                
+                if (validOffers.length === 0) {
+                    validOffers = aiRoster.filter(p => {
+                        let val = calculateTradeValue(p);
+                        return val >= myVal * 0.85 && val <= myVal * 1.15;
+                    });
+                }
+
+                offerPlayer = validOffers[Math.floor(Math.random() * validOffers.length)] || null;
+
+                if (!offerPlayer || !myPlayer) continue;
+
+                proposals.push({
+                    id: 'tr_' + Math.random().toString(36).substr(2, 7),
+                    aiTeam: cpuTeam,
+                    tradeTag,
+                    offerPlayer: JSON.parse(JSON.stringify(offerPlayer)), 
+                    myPlayer: JSON.parse(JSON.stringify(myPlayer))
+                });
+            }
+
+            tradeProposalsMap[targetTeam] = proposals;
+        });
+    }
+
+    function renderTradeBlock() {
+        const container = document.getElementById('trade-block-container');
+        container.innerHTML = '';
+
+        const proposals = tradeProposalsMap[myTeamName] || [];
+        if (proposals.length === 0) {
+            container.innerHTML = `<p style="text-align: center; padding: 30px; color: var(--text-muted);">현재 도착한 컴퓨터 AI 구단의 트레이드 제안이 없습니다.</p>`;
+            return;
+        }
+
+        const myRoster = getMyRoster();
+
+        proposals.forEach(t => {
+            const diff = t.offerPlayer.salary - t.myPlayer.salary;
+            const diffText = diff > 0 ? `(+${diff}억 원 증가)` : `(${Math.abs(diff)}억 원 절감!)`;
+
+            const offerBadges = getPlayerBadgesHTML(t.offerPlayer);
+            const myBadges = getPlayerBadgesHTML(t.myPlayer);
+
+            const offeredPosPlayers = myRoster.filter(p => p.position === t.offerPlayer.position).sort((a,b) => b.current - a.current);
+            const requestedPosPlayers = myRoster.filter(p => p.position === t.myPlayer.position).sort((a,b) => b.current - a.current);
+
+            let offeredPosListHTML = offeredPosPlayers.map(p => `<li>${p.tier === 1 ? '[1군]' : '[2군]'} <b>${p.name}</b>${getPlayerBadgesHTML(p)} (${valToGrade(p.current)}, ${p.salary}억)</li>`).join('') || '<li>보유 선수 없음</li>';
+            let requestedPosListHTML = requestedPosPlayers.map(p => `<li>${p.tier === 1 ? '[1군]' : '[2군]'} <b>${p.name}</b>${getPlayerBadgesHTML(p)} (${valToGrade(p.current)}, ${p.salary}억)</li>`).join('') || '<li>보유 선수 없음</li>';
+
+            let lifecycleLabel = aiTeamLifecycleMap[t.aiTeam] ? getLifecycleLabel(aiTeamLifecycleMap[t.aiTeam].phase) : 'AI';
+
+            container.innerHTML += `
+                <div class="trade-card">
+                    <div style="font-weight:bold; font-size:0.88rem; color:var(--text-dark); display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        <span>${t.tradeTag}</span>
+                        <span style="color:var(--text-muted); font-size:0.8rem;">[${t.aiTeam} (${lifecycleLabel})] 구단 공식 제안</span>
+                    </div>
+                    <div class="trade-card-body">
+                        <div class="trade-player-info">
+                            <div style="color:var(--accent-blue); font-weight:bold; font-size:0.85rem;">[${t.aiTeam}] 상대 제시 선수</div>
+                            <div style="margin-top:4px; font-size:0.88rem;" class="player-row-clickable" ondblclick="openPlayerBioModal('${t.offerPlayer.id}')">
+                                <b>${t.offerPlayer.name}</b>${offerBadges} (${t.offerPlayer.position}, ${t.offerPlayer.age}세)<br>
+                                현재: ${getGradeBadgeHTML(t.offerPlayer.current)} / 잠재: ${getGradeBadgeHTML(t.offerPlayer.potential)}<br>
+                                연봉: <b style="color:var(--accent-blue);">${t.offerPlayer.salary}억 원</b> | 계약: <b>${t.offerPlayer.contractYears}년</b>
+                            </div>
+                        </div>
+                        <div style="font-size: 1.2rem; font-weight: bold; color: var(--text-muted); text-align:center;">⇄</div>
+                        <div class="trade-player-info">
+                            <div style="color:var(--accent-red); font-weight:bold; font-size:0.85rem;">[${myTeamName}] 요구 선수 (내가 내줄 선수)</div>
+                            <div style="margin-top:4px; font-size:0.88rem;" class="player-row-clickable" ondblclick="openPlayerBioModal('${t.myPlayer.id}')">
+                                <b>${t.myPlayer.name}</b>${myBadges} (${t.myPlayer.position}, ${t.myPlayer.age}세)<br>
+                                현재: ${getGradeBadgeHTML(t.myPlayer.current)} / 잠재: ${getGradeBadgeHTML(t.myPlayer.potential)}<br>
+                                연봉: <b style="color:var(--accent-red);">${t.myPlayer.salary}억 원</b> | 계약: <b>${t.myPlayer.contractYears}년</b>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; justify-content:center; align-items:flex-end; gap:6px; min-width:140px;">
+                            <small style="color:var(--accent-green); font-weight:bold;">${diffText}</small>
+                            <button class="btn btn-success" style="width:100%;" onclick="acceptTrade('${t.id}')">수락</button>
+                            <button class="btn btn-danger" style="width:100%;" onclick="declineTrade('${t.id}')">거절</button>
+                        </div>
+                    </div>
+
+                    <details style="margin-top:8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px;">
+                        <summary style="cursor:pointer; font-weight:bold; color:var(--primary); font-size:0.8rem;">
+                            📋 내 포지션별 선수 비교: [받을 ${t.offerPlayer.position} ${offeredPosPlayers.length}명] vs [줄 ${t.myPlayer.position} ${requestedPosPlayers.length}명]
+                        </summary>
+                        <div style="display:flex; gap:12px; margin-top:8px; font-size:0.78rem; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:200px; background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                <b style="color:var(--accent-blue);">내 [${t.offerPlayer.position}] 보유 명단:</b>
+                                <ul style="padding-left:16px; margin-top:4px; line-height:1.5;">
+                                    ${offeredPosListHTML}
+                                </ul>
+                            </div>
+                            <div style="flex:1; min-width:200px; background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                <b style="color:var(--accent-red);">내 [${t.myPlayer.position}] 보유 명단:</b>
+                                <ul style="padding-left:16px; margin-top:4px; line-height:1.5;">
+                                    ${requestedPosListHTML}
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            `;
+        });
+    }
+
+    function acceptTrade(tradeId) {
+        const proposals = tradeProposalsMap[myTeamName] || [];
+        const trade = proposals.find(t => t.id === tradeId);
+        if (trade) {
+            if (trade.offerPlayer.isFA || trade.myPlayer.isFA || trade.myPlayer.isUntradeable) {
+                alert("[트레이드 금지] FA 영입 선수 또는 트레이드 불가 지정 선수는 교환할 수 없습니다.");
+                return;
+            }
+
+            let totalSalary = getMyTotalSalary();
+            let salaryDiff = trade.offerPlayer.salary - trade.myPlayer.salary;
+            let effectiveCap = getEffectiveCap(myTeamName);
+            let maxCapWithBuffer = effectiveCap * 1.3;
+
+            if (salaryDiff > 0 && (totalSalary + salaryDiff > maxCapWithBuffer)) {
+                alert(`[소프트캡 초과 경고] 해당 트레이드를 진행하면 실효 샐러리캡 허용 한도를 초과하게 됩니다.`);
+                return;
+            }
+        }
+
+        addGMExp(3);
+
+        if (isHost) {
+            processTradeAccept(myTeamName, tradeId);
+            broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_TRADE_ACCEPT', teamName: myTeamName, tradeId });
+        }
+    }
+
+    function processTradeAccept(teamName, tradeId) {
+        const proposals = tradeProposalsMap[teamName] || [];
+        const trade = proposals.find(t => t.id === tradeId);
+        if (!trade) return;
+
+        let myRoster = allTeamRosters[teamName] || [];
+        let aiTeamRoster = allTeamRosters[trade.aiTeam] || [];
+
+        let offerP = aiTeamRoster.find(p => p.id === trade.offerPlayer.id);
+        let myP = myRoster.find(p => p.id === trade.myPlayer.id);
+
+        if (!offerP || !myP || offerP.isFA || myP.isFA || myP.isUntradeable) {
+            tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
+            log(`⚠️ <b>[트레이드 무효화]</b> 거래 대상 선수 중 이미 존재하지 않거나 FA/트레이드보호 선수가 포함되어 거래가 취소되었습니다.`);
+            alert("⚠️ 트레이드 대상 선수가 존재하지 않거나 보호 규정에 위반되어 거래가 무효화되었습니다.");
+            return;
+        }
+
+        myRoster = myRoster.filter(p => p.id !== myP.id);
+        aiTeamRoster = aiTeamRoster.filter(p => p.id !== offerP.id);
+
+        offerP.teamTenure = 0;
+        offerP.tier = 2;
+        offerP.seasonStartCurrent = offerP.current;
+        offerP.lastChangeReason = "🔄 트레이드 영입";
+        recordTeamChange(offerP, teamName, currentYear);
+        myRoster.push(offerP);
+        allTeamRosters[teamName] = myRoster;
+
+        myP.teamTenure = 0;
+        myP.tier = 2;
+        myP.seasonStartCurrent = myP.current;
+        myP.lastChangeReason = "🔄 트레이드 영입";
+        recordTeamChange(myP, trade.aiTeam, currentYear);
+        aiTeamRoster.push(myP);
+        allTeamRosters[trade.aiTeam] = aiTeamRoster;
+
+        autoAssignFirstTierForTeam(trade.aiTeam);
+
+        tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
+        log(`🔄 <b>[트레이드 성공]</b> [${teamName}] <b>${offerP.name}</b> ⇄ [${trade.aiTeam}] <b>${myP.name}</b> 맞교환 완료!`);
+    }
+
+    function declineTrade(tradeId) {
+        if (isHost) {
+            processTradeDecline(myTeamName, tradeId);
+            broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_TRADE_DECLINE', teamName: myTeamName, tradeId });
+        }
+    }
+
+    function processTradeDecline(teamName, tradeId) {
+        const proposals = tradeProposalsMap[teamName] || [];
+        tradeProposalsMap[teamName] = proposals.filter(t => t.id !== tradeId);
+    }
+
+    function openTradeBlockTab() { switchTab('trade'); }
+
+    function initDirectTradeUI() {
+        const targetPlayerSelect = document.getElementById('dt-target-player');
+        const myPlayerSelect = document.getElementById('dt-my-player');
+        const statusMsg = document.getElementById('direct-trade-status-msg');
+        if (!targetPlayerSelect || !myPlayerSelect) return;
+
+        const isQuarter2Finished = (phase === 'TRADE_2');
+        const alreadyUsed = directTradeUsedMap[myTeamName] || false;
+
+        if (!isQuarter2Finished) {
+            statusMsg.innerHTML = "⚠️ 직접 트레이드는 <b>2분기 종료 시점(72G 완료 직후)</b>에만 요청할 수 있습니다.";
+            document.getElementById('dt-request-btn').disabled = true;
+            return;
+        }
+
+        if (alreadyUsed) {
+            statusMsg.innerHTML = "⚠️ 이미 이번 시즌 2분기 직접 트레이드 기회를 사용하셨습니다.";
+            document.getElementById('dt-request-btn').disabled = true;
+            return;
+        }
+
+        statusMsg.innerHTML = "✅ 지금 직접 트레이드 요청이 가능합니다! 다른 인간 단장의 선수를 지정해 제안하세요.";
+        document.getElementById('dt-request-btn').disabled = false;
+
+        const humanPlayers = playersInRoom.filter(p => p.teamName !== myTeamName);
+        targetPlayerSelect.innerHTML = '';
+        
+        if (humanPlayers.length === 0) {
+            targetPlayerSelect.innerHTML = `<option value="">접속 중인 다른 인간 단장이 없습니다.</option>`;
+            document.getElementById('dt-request-btn').disabled = true;
+            return;
+        }
+
+        humanPlayers.forEach(hp => {
+            const hRoster = (allTeamRosters[hp.teamName] || []).filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+            hRoster.forEach(p => {
+                const tierBadge = p.tier === 1 ? '[1군]' : '[2군]';
+                const markStr = (p.isLegend?'⭐ ':'') + (p.teamTenure>=7?'👑 ':'') + (p.hasMLBBadge?'🇺🇸 ':'');
+                targetPlayerSelect.innerHTML += `<option value="${hp.peerId}|${hp.teamName}|${p.id}">[단장:${hp.name} / ${hp.teamName}] ${tierBadge} ${p.position} ${markStr}${p.name} (${valToGrade(p.current)}, ${p.salary}억)</option>`;
+            });
+        });
+
+        const myRoster = getMyRoster().filter(p => !p.isForeign && !p.isFA && !p.isUntradeable);
+        myPlayerSelect.innerHTML = '';
+        myRoster.forEach(p => {
+            const tierBadge = p.tier === 1 ? '[1군]' : '[2군]';
+            const markStr = (p.isLegend?'⭐ ':'') + (p.teamTenure>=7?'👑 ':'') + (p.hasMLBBadge?'🇺🇸 ':'');
+            myPlayerSelect.innerHTML += `<option value="${p.id}">${tierBadge} ${p.position} ${markStr}${p.name} (${valToGrade(p.current)}, ${p.salary}억)</option>`;
+        });
+    }
+
+    function sendDirectTradeRequest() {
+        const targetVal = document.getElementById('dt-target-player').value;
+        const myPlayerId = document.getElementById('dt-my-player').value;
+
+        if (!targetVal || !myPlayerId) {
+            alert("상대 단장 선수와 보낼 내 선수를 모두 선택해주세요.");
+            return;
+        }
+
+        const [targetPeerId, targetTeamName, targetPlayerId] = targetVal.split('|');
+        const myPlayer = getMyRoster().find(p => p.id === myPlayerId);
+
+        if (!myPlayer || myPlayer.isFA || myPlayer.isUntradeable) {
+            alert("FA 선수나 트레이드 불가 지정 선수는 트레이드할 수 없습니다.");
+            return;
+        }
+
+        directTradeUsedMap[myTeamName] = true;
+
+        const proposalObj = {
+            id: 'dt_' + Math.random().toString(36).substr(2, 9),
+            fromTeam: myTeamName, fromGM: myGMName, fromPeerId: myPeerId,
+            fromPlayerId: myPlayerId, fromPlayerName: myPlayer.name,
+            targetTeam: targetTeamName, targetPlayerId: targetPlayerId
+        };
+
+        if (targetPeerId === myPeerId) {
+            alert("자기 자신에게는 트레이드를 요청할 수 없습니다.");
+            return;
+        }
+
+        if (isHost) {
+            if (targetPeerId === myPeerId) {
+                incomingTradeProposals.push(proposalObj); updateInboxUI();
+            } else {
+                const targetConn = guestConns.find(c => c.peer === targetPeerId);
+                if (targetConn) targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal: proposalObj });
+                else alert("상대 단장과의 연결을 찾을 수 없습니다.");
+            }
+        } else {
+            hostConn.send({ type: 'ACTION_DIRECT_TRADE_REQUEST', proposal: proposalObj, targetPeerId });
+        }
+
+        alert("상대 단장에게 직접 트레이드 요청을 전송했습니다. 상대방의 [유저 트레이드] 탭에 표시됩니다.");
+        broadcastGameState();
+    }
+
+    function routeDirectTradeProposal(proposal) {
+        if (isHost) {
+            if (proposal.targetTeam === myTeamName || proposal.targetPeerId === myPeerId) {
+                incomingTradeProposals.push(proposal); updateInboxUI();
+            } else {
+                const targetPlr = playersInRoom.find(p => p.teamName === proposal.targetTeam);
+                if (targetPlr) {
+                    const targetConn = guestConns.find(c => c.peer === targetPlr.peerId);
+                    if (targetConn) targetConn.send({ type: 'DIRECT_TRADE_PROPOSAL', proposal });
+                }
+            }
+        }
+    }
+
+    function executeDirectTradeResponse(data) {
+        if (data.accepted) {
+            executeAcceptedDirectTrade(data.proposal.fromTeam, data.proposal.targetTeam, data.proposal.fromPlayerId, data.proposal.targetPlayerId);
+            broadcastGameState();
+        }
+    }
+
+    function respondDirectTrade(proposalId, accept) {
+        const idx = incomingTradeProposals.findIndex(p => p.id === proposalId);
+        if (idx === -1) return;
+        const proposal = incomingTradeProposals[idx];
+
+        if (accept) {
+            if (isHost) {
+                executeAcceptedDirectTrade(proposal.fromTeam, proposal.targetTeam, proposal.fromPlayerId, proposal.targetPlayerId);
+                broadcastGameState();
+            } else {
+                hostConn.send({ type: 'ACTION_DIRECT_TRADE_RESPONSE', accepted: true, proposal });
+            }
+            alert("트레이드 제안을 수락하여 선수 교환이 완료되었습니다!");
+        } else {
+            alert("트레이드 제안을 거절했습니다.");
+        }
+
+        incomingTradeProposals.splice(idx, 1);
+        updateInboxUI();
+    }
+
+    function executeAcceptedDirectTrade(teamA, teamB, playerAId, playerBId) {
+        let rosterA = allTeamRosters[teamA] || [];
+        let rosterB = allTeamRosters[teamB] || [];
+
+        let playerA = rosterA.find(p => p.id === playerAId);
+        let playerB = rosterB.find(p => p.id === playerBId);
+
+        if (!playerA || !playerB || playerA.isFA || playerB.isFA || playerA.isUntradeable || playerB.isUntradeable) {
+            log(`⚠️ <b>[유저 트레이드 실패]</b> 트레이드 대상 선수 중 FA/보호선수가 있거나 대상이 없어 거래가 취소되었습니다.`);
+            alert("⚠️ 트레이드 대상 선수가 존재하지 않거나 영입/보호 규정에 위반되어 거래가 실패했습니다.");
+            return;
+        }
+
+        rosterA = rosterA.filter(p => p.id !== playerAId);
+        rosterB = rosterB.filter(p => p.id !== playerBId);
+
+        playerA.teamTenure = 0; playerB.teamTenure = 0;
+        playerA.tier = 2; playerB.tier = 2;
+        playerA.lastChangeReason = "🤝 유저 직거래";
+        playerB.lastChangeReason = "🤝 유저 직거래";
+
+        recordTeamChange(playerA, teamB, currentYear);
+        recordTeamChange(playerB, teamA, currentYear);
+
+        rosterB.push(playerA);
+        rosterA.push(playerB);
+
+        allTeamRosters[teamA] = rosterA;
+        allTeamRosters[teamB] = rosterB;
+
+        autoAssignFirstTierForTeam(teamA);
+        autoAssignFirstTierForTeam(teamB);
+
+        log(`🤝 <b>[직접 트레이드 성사]</b> [${teamA}]의 ${playerA.name} ⇄ [${teamB}]의 ${playerB.name} 선수 맞교환 완료!`);
+    }
+
+    function updateInboxUI() {
+        const container = document.getElementById('incoming-proposals-container');
+        const badge = document.getElementById('inbox-badge');
+        if (!container) return;
+
+        if (incomingTradeProposals.length === 0) {
+            container.innerHTML = `<p style="text-align: center; padding: 20px; color: var(--text-muted);">현재 도착한 직접 트레이드 제안이 없습니다.</p>`;
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+
+        if (badge) {
+            badge.innerText = incomingTradeProposals.length;
+            badge.style.display = 'inline-block';
+        }
+
+        container.innerHTML = '';
+        incomingTradeProposals.forEach(prop => {
+            const senderRoster = allTeamRosters[prop.fromTeam] || [];
+            const offeredPlayer = senderRoster.find(p => p.id === prop.fromPlayerId);
+            const myTargetRoster = allTeamRosters[prop.targetTeam] || [];
+            const myTargetPlayer = myTargetRoster.find(p => p.id === prop.targetPlayerId);
+
+            const offBadges = getPlayerBadgesHTML(offeredPlayer);
+            const tarBadges = getPlayerBadgesHTML(myTargetPlayer);
+
+            const offeredName = offeredPlayer ? `${offeredPlayer.position} <b>${offeredPlayer.name}</b>${offBadges} (능력:${valToGrade(offeredPlayer.current)}, 연봉:${offeredPlayer.salary}억)` : '선수 정보 없음';
+            const targetName = myTargetPlayer ? `${myTargetPlayer.position} <b>${myTargetPlayer.name}</b>${tarBadges} (능력:${valToGrade(myTargetPlayer.current)}, 연봉:${myTargetPlayer.salary}억)` : '내 선수 정보 없음';
+
+            const offSal = offeredPlayer ? offeredPlayer.salary : 0;
+            const tarSal = myTargetPlayer ? myTargetPlayer.salary : 0;
+            const netDiff = offSal - tarSal;
+            const diffStr = netDiff > 0 ? `(+${netDiff}억 원 증가)` : `(${Math.abs(netDiff)}억 원 절감)`;
+
+            container.innerHTML += `
+                <div class="trade-card">
+                    <div style="font-weight:bold; font-size:0.88rem; color:var(--text-dark); border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        📬 [${prop.fromGM}] 단장 (${prop.fromTeam})의 직접 트레이드 제안
+                    </div>
+                    <div class="trade-card-body">
+                        <div class="trade-player-info">
+                            <div style="color:var(--accent-blue); font-weight:bold; font-size:0.85rem;">받을 선수 (상대가 주는 선수)</div>
+                            <div style="margin-top:4px;" class="player-row-clickable" ondblclick="openPlayerBioModal('${offeredPlayer ? offeredPlayer.id : ''}')">${offeredName}</div>
+                        </div>
+                        <div style="font-size: 1.2rem; font-weight: bold; color: var(--text-muted); text-align:center;">⇄</div>
+                        <div class="trade-player-info">
+                            <div style="color:var(--accent-red); font-weight:bold; font-size:0.85rem;">보낼 선수 (내 선수)</div>
+                            <div style="margin-top:4px;" class="player-row-clickable" ondblclick="openPlayerBioModal('${myTargetPlayer ? myTargetPlayer.id : ''}')">${targetName}</div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:140px; align-items:flex-end;">
+                            <small style="color:var(--accent-green); font-weight:bold;">${diffStr}</small>
+                            <button class="btn btn-success" style="width:100%;" onclick="respondDirectTrade('${prop.id}', true)">수락</button>
+                            <button class="btn btn-danger" style="width:100%;" onclick="respondDirectTrade('${prop.id}', false)">거절</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function resetStandings() {
+        standings = KBO_TEAMS.map(team => {
+            let roster = allTeamRosters[team] || [];
+            let pw = roster.length > 0 ? calculateTeamPowerBreakdown(roster).overallNum : 6.0;
+            let playerInRoom = playersInRoom.find(p => p.teamName === team);
+            let lifecycleState = aiTeamLifecycleMap[team] ? ` [${getLifecycleLabel(aiTeamLifecycleMap[team].phase)}]` : '';
+            let gmInfo = playerInRoom ? `${playerInRoom.name}` : `컴퓨터 AI${lifecycleState}`;
+
+            return { name: team, gmInfo, powerNum: pw, wins: 0, losses: 0, draws: 0, rate: 0 };
+        });
+    }
+
+    function getLifecycleLabel(phase) {
+        const labels = { 'CONTENDER': '👑 우승도전', 'PLATEAU': '⚖️ 세대교체', 'REBUILDING': '🏗️ 리빌딩', 'RISING': '📈 전력반등' };
+        return labels[phase] || 'AI';
+    }
+
+    function manageAICapAndReleases(team) {
+        return;
+    }
+
+    function processAITeamLifecycles() {
+        const humanTeamNames = playersInRoom.map(p => p.teamName);
+
+        KBO_TEAMS.forEach(team => {
+            if (humanTeamNames.includes(team)) return; 
+
+            manageAICapAndReleases(team);
+
+            let state = aiTeamLifecycleMap[team] || { phase: 'PLATEAU', years: 0, duration: 2 };
+            let roster = allTeamRosters[team] || [];
+
+            state.years += 1;
+
+            if (state.phase === 'CONTENDER') {
+                roster.forEach(p => {
+                    if (p.tier === 1 && p.current < 9 && Math.random() < 0.6) {
+                        p.current = Math.min(9, p.current + 1);
+                        p.potential = Math.max(p.current, p.potential);
+                        p.lastChangeReason = "👑 AI 우승도전 전력 강화";
+                    }
+                });
+                let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
+                if (state.years >= state.duration || updatedPower >= 8.8) {
+                    state.phase = 'REBUILDING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 2;
+                    log(`🔄 <b>[구단 생애주기]</b> [${team}] 구단이 세대교체 <b>🏗️ 리빌딩</b>에 진입합니다.`);
+                }
+            } else if (state.phase === 'REBUILDING') {
+                roster.forEach(p => {
+                    if (p.age >= 28 && p.current > 5 && Math.random() < 0.5) {
+                        p.current = Math.max(5, p.current - 1);
+                        p.lastChangeReason = "🏗️ AI 리빌딩 베테랑 교체";
+                    } else if (p.age <= 24 && p.current < 7 && Math.random() < 0.4) {
+                        p.current = Math.min(7, p.current + 1);
+                        p.lastChangeReason = "🏗️ AI 리빌딩 유망주 육성";
+                    }
+                });
+
+                let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
+                if (state.years >= state.duration || updatedPower >= 6.2) {
+                    state.phase = 'RISING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 1;
+                    log(`📈 <b>[구단 생애주기]</b> [${team}] 구단이 육성을 마치고 <b>📈 전력 반등기</b>로 접어듭니다.`);
+                }
+            } else if (state.phase === 'RISING') {
+                roster.forEach(p => {
+                    if (p.current < 8 && Math.random() < 0.5) {
+                        p.current = Math.min(8, p.current + 1);
+                        p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                        p.lastChangeReason = "📈 AI 반등기 기량 개화";
+                    }
+                });
+
+                let updatedPower = calculateTeamPowerBreakdown(roster).overallNum;
+                if (state.years >= state.duration || updatedPower >= 7.8) {
+                    state.phase = 'CONTENDER'; state.years = 0; state.duration = Math.floor(Math.random() * 3) + 2;
+                    log(`👑 <b>[구단 생애주기]</b> [${team}] 구단이 우승권 <b>👑 우승도전</b>에 진입했습니다!`);
+                }
+            } else { 
+                roster.forEach(p => {
+                    if (p.current > 7 && Math.random() < 0.3) p.current--;
+                    else if (p.current < 6 && Math.random() < 0.3) p.current++;
+                });
+                let currentPowerNum = calculateTeamPowerBreakdown(roster).overallNum;
+                if (currentPowerNum >= 7.8) {
+                    state.phase = 'CONTENDER'; state.years = 0; state.duration = Math.floor(Math.random() * 3) + 2;
+                } else if (currentPowerNum <= 5.8 || state.years >= state.duration) {
+                    state.phase = 'REBUILDING'; state.years = 0; state.duration = Math.floor(Math.random() * 2) + 2;
+                }
+            }
+
+            autoAssignFirstTierForTeam(team);
+            aiTeamLifecycleMap[team] = state;
+        });
+    }
+
+    function processQuarterlyGrowth(qNum) {
+        KBO_TEAMS.forEach(team => {
+            let roster = allTeamRosters[team] || [];
+            roster.forEach(p => {
+                let growthGap = p.potential - p.current;
+                let oldCurr = p.current, oldPot = p.potential;
+                let legendBonus = p.isLegend ? 0.20 : 0.0;
+
+                if (p.age >= 19 && p.age <= 24) {
+                    if (growthGap > 0) {
+                        let quarterlyProb = (0.70 + (growthGap * 0.10) + legendBonus) / 4;
+                        if (Math.random() < quarterlyProb) {
+                            p.current = Math.min(p.potential, p.current + 1);
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `⚡ Q${qNum} 19~24세 유망주 유망성 폭발 (+1)`;
+                        }
+                    }
+                } else if (p.age >= 25) {
+                    if (p.age >= 26 && growthGap >= 2) {
+                        let convergenceProb = 0.50 / 4;
+                        if (Math.random() < convergenceProb) {
+                            p.current = Math.min(15, p.current + 1);
+                            p.potential = Math.max(p.current, p.potential - 1);
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `🔄 Q${qNum} 26세+ 잠재-현재 간극 수렴 (현재+1/잠재-1)`;
+                        }
+                    } else if (growthGap > 0) {
+                        let quarterlyProb = (0.25 + (growthGap * 0.05) + legendBonus) / 4;
+                        if (Math.random() < quarterlyProb) {
+                            p.current = Math.min(p.potential, p.current + 1);
+                            p.peakCurrent = Math.max(p.peakCurrent || 0, p.current);
+                            p.lastChangeReason = `⚡ Q${qNum} 전성기 기량 만개 (+1)`;
+                        }
+                    }
+
+                    if (p.age >= 30) {
+                        let ageFactor = p.age - 30;
+                        let quarterlyDeclineChance = Math.min(0.90, 0.30 + ageFactor * 0.10) / 4;
+                        if (Math.random() < quarterlyDeclineChance) {
+                            p.current = Math.max(1, p.current - 1);
+                            if (!p.isLegend) {
+                                p.potential = Math.max(p.current, p.potential - 1);
+                                p.lastChangeReason = `📉 Q${qNum} 노화 에이징커브 (현재/잠재 -1)`;
+                            } else {
+                                p.lastChangeReason = `📉 Q${qNum} 노화 (기량 -1, ⭐잠재보존)`;
+                            }
+                        }
+                    }
+                }
+
+                if (p.current !== oldCurr || p.potential !== oldPot) {
+                    if (!p.growthHistory) p.growthHistory = [];
+                    p.growthHistory.push({
+                        year: currentYear, qNum, oldCurr, newCurr: p.current,
+                        oldPot, newPot: p.potential, reason: p.lastChangeReason, tier: p.tier
+                    });
+                    if (p.growthHistory.length > 5) p.growthHistory.shift(); 
+                }
+            });
+        });
+    }
+
+    function simulateQuarter(qNum) {
+        if (!isHost) {
+            alert("시즌 진행 조작은 Host(방장)만 수행할 수 있습니다.");
+            return;
+        }
+
+        playChimeSound();
+        resetAllReadies();
+        processQuarterlyGrowth(qNum);
+
+        standings.forEach(t => {
+            let r = allTeamRosters[t.name] || [];
+            if (r.length > 0) t.powerNum = calculateTeamPowerBreakdown(r).overallNum;
+        });
+
+        for (let i = 0; i < standings.length; i++) {
+            for (let j = i + 1; j < standings.length; j++) {
+                const games = 4;
+                const pA = standings[i].powerNum;
+                const pB = standings[j].powerNum;
+                const probA = Math.pow(pA, 3) / (Math.pow(pA, 3) + Math.pow(pB, 3));
+
+                for (let g = 0; g < games; g++) {
+                    let rand = Math.random();
+                    if (rand < probA - 0.02) { standings[i].wins++; standings[j].losses++; }
+                    else if (rand > probA + 0.02) { standings[j].wins++; standings[i].losses++; }
+                    else { standings[i].draws++; standings[j].draws++; }
+                }
+            }
+        }
+
+        standings.forEach(t => t.rate = (t.wins / (t.wins + t.losses)).toFixed(3));
+        standings.sort((a, b) => b.rate - a.rate);
+
+        if (qNum <= 3) {
+            phase = `TRADE_${qNum}`;
+            generateCPUTradeProposals();
+            log(`<b>[${qNum}분기 (${qNum*36}경기) 완료]</b> 실시간 기량 변동 및 팀 전력 리포트 갱신 완료!`);
+            setPipAlert(`${qNum}분기 (${qNum*36}경기) 완료!`);
+        } else {
+            phase = 'PS_READY';
+            log(`<b>[4분기 (144경기 정규시즌) 완료]</b> 정규시즌이 종료되었습니다! 포스트시즌 단계를 진행하세요.`);
+            setPipAlert(`정규시즌(144G) 종료! 포스트시즌 개막`);
+        }
+
+        broadcastGameState();
+    }
+
+    function advancePostseason() {
+        if (!isHost) return;
+
+        playChimeSound();
+        resetAllReadies();
+
+        if (phase === 'PS_READY') {
+            let top5 = standings.slice(0, 5);
+            let top5Objs = top5.map(t => ({ name: t.name, powerNum: t.powerNum }));
+            let team4 = top5Objs[3], team5 = top5Objs[4];
+
+            psData = {
+                top5: top5Objs, currentRound: 'WC', gameNum: 1,
+                teamA: team4, teamB: team5, winsA: 1, winsB: 0, targetWins: 2,
+                wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null,
+                poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null
+            };
+
+            phase = 'PS_IN_PROGRESS';
+            log(`🏆 <b>${currentYear} KBO 포스트시즌 개막!</b><br>1위: ${top5Objs[0].name} | 2위: ${top5Objs[1].name} | 3위: ${top5Objs[2].name} | 4위: ${top5Objs[3].name} | 5위: ${top5Objs[4].name}`);
+            log(`⚾ <b>[와일드카드 결정전 개막]</b> 4위 [${team4.name}] (1승 우위) vs 5위 [${team5.name}]`);
+            setPipAlert(`와일드카드 결정전 1차전 준비`);
+            broadcastGameState();
+            return;
+        }
+
+        if (phase === 'PS_IN_PROGRESS') {
+            let roundNames = { 'WC': '와일드카드 결정전', 'SEMI': '준플레이오프', 'PO': '플레이오프', 'KS': '한국시리즈' };
+            let rName = roundNames[psData.currentRound] || '포스트시즌';
+            let tA = psData.teamA, tB = psData.teamB;
+
+            let pA = tA.powerNum, pB = tB.powerNum;
+            let probA = Math.pow(pA, 3) / (Math.pow(pA, 3) + Math.pow(pB, 3));
+            
+            let isAWin = Math.random() < probA;
+            let winner = isAWin ? tA : tB;
+
+            if (isAWin) psData.winsA++; else psData.winsB++;
+
+            log(`⚾ <b>[${rName} ${psData.gameNum}차전]</b> <b>${winner.name}</b> 승리! (${tA.name} ${psData.winsA}승 vs ${tB.name} ${psData.winsB}승)`);
+            setPipAlert(`${rName} ${psData.gameNum}차전: ${winner.name} 승리!`);
+            psData.gameNum++;
+
+            let seriesWinner = null, seriesLoser = null;
+            if (psData.winsA >= psData.targetWins) { seriesWinner = tA; seriesLoser = tB; }
+            else if (psData.winsB >= psData.targetWins) { seriesWinner = tB; seriesLoser = tA; }
+
+            if (seriesWinner) {
+                log(`🎉 <b>[${rName} 최종 승리]</b> <b>${seriesWinner.name}</b>이(가) ${seriesLoser.name}을(를) 꺾고 다음 라운드로 진출합니다!`);
+                
+                if (psData.currentRound === 'WC') {
+                    psData.wcWinner = seriesWinner.name; psData.wcLoser = seriesLoser.name;
+                    let team3 = psData.top5[2];
+                    let wcWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
+
+                    psData.currentRound = 'SEMI'; psData.gameNum = 1;
+                    psData.teamA = team3; psData.teamB = wcWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 3; 
+
+                    log(`⚾ <b>[준플레이오프 개막]</b> 3위 [${team3.name}] vs WC승자 [${wcWinnerObj.name}] (3승 선승제)`);
+                    setPipAlert(`준플레이오프 1차전 준비`);
+
+                } else if (psData.currentRound === 'SEMI') {
+                    psData.semiWinner = seriesWinner.name; psData.semiPoLoser = seriesLoser.name;
+                    let team2 = psData.top5[1];
+                    let semiWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
+
+                    psData.currentRound = 'PO'; psData.gameNum = 1;
+                    psData.teamA = team2; psData.teamB = semiWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 3; 
+
+                    log(`⚾ <b>[플레이오프 개막]</b> 2위 [${team2.name}] vs 준PO승자 [${semiWinnerObj.name}] (3승 선승제)`);
+                    setPipAlert(`플레이오프 1차전 준비`);
+
+                } else if (psData.currentRound === 'PO') {
+                    psData.poWinner = seriesWinner.name; psData.poLoser = seriesLoser.name;
+                    let team1 = psData.top5[0];
+                    let poWinnerObj = psData.top5.find(t => t.name === seriesWinner.name) || seriesWinner;
+
+                    psData.currentRound = 'KS'; psData.gameNum = 1;
+                    psData.teamA = team1; psData.teamB = poWinnerObj;
+                    psData.winsA = 0; psData.winsB = 0; psData.targetWins = 4; 
+
+                    log(`👑 <b>[한국시리즈 개막]</b> 1위 [${team1.name}] vs PO승자 [${poWinnerObj.name}] (4승 선승제)`);
+                    setPipAlert(`한국시리즈 1차전 준비`);
+
+                } else if (psData.currentRound === 'KS') {
+                    psData.ksWinner = seriesWinner.name; psData.ksRunnerUp = seriesLoser.name;
+                    log(`👑 <b>[한국시리즈 최종 우승]</b> <b>${seriesWinner.name}</b> ${currentYear} KBO 최종 우승!`);
+                    setPipAlert(`🏆 한국시리즈 우승: ${seriesWinner.name}!`);
+
+                    let winnerRoster = allTeamRosters[seriesWinner.name] || [];
+                    winnerRoster.forEach(p => {
+                        if (!p.championships) p.championships = [];
+                        p.championships.push(`${currentYear} ${seriesWinner.name}`);
+                    });
+
+                    standings.forEach((t, idx) => {
+                        let teamRoster = allTeamRosters[t.name] || [];
+                        let teamPowerGrade = calculateTeamPowerBreakdown(teamRoster).overallGrade;
+
+                        let psResultText = "정규시즌 종료";
+                        if (t.name === psData.ksWinner) psResultText = "🏆 한국시리즈 우승";
+                        else if (t.name === psData.ksRunnerUp) psResultText = "🥈 한국시리즈 준우승";
+                        else if (t.name === psData.poLoser) psResultText = "플레이오프 탈락";
+                        else if (t.name === psData.semiPoLoser) psResultText = "준플레이오프 탈락";
+                        else if (t.name === psData.wcLoser) psResultText = "와일드카드 탈락";
+
+                        let rankStr = `${idx + 1}위 (${psResultText})`;
+                        let pInRoom = playersInRoom.find(p => p.teamName === t.name);
+
+                        seasonHistory.push({
+                            teamName: t.name, gmName: pInRoom ? pInRoom.name : '컴퓨터 AI',
+                            isHuman: !!pInRoom, year: currentYear, rankNum: idx + 1,
+                            isWinner: (t.name === psData.ksWinner), isRunnerUp: (t.name === psData.ksRunnerUp),
+                            rankText: rankStr, power: teamPowerGrade, level: pInRoom ? `Lv.${gmLevel}` : 'AI'
+                        });
+                    });
+
+                    addGMExp(30);
+                    phase = 'OFFSEASON_READY';
+                }
+            }
+
+            broadcastGameState();
+        }
+    }
+
+    function prepareOffseason() {
+        if (!isHost) return;
+
+        resetAllReadies();
+        processAITeamLifecycles();
+
+        const humanTeamNames = playersInRoom.map(p => p.teamName);
+
+        KBO_TEAMS.forEach(team => {
+            syncRosterTeamHistory(team);
+
+            if (!humanTeamNames.includes(team)) {
+                let roster = allTeamRosters[team] || [];
+
+                for (let r = 0; r < 4; r++) {
+                    let pos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+                    let age = Math.floor(Math.random() * 4) + 19;
+                    let pot = Math.floor(Math.random() * 3) + 8;
+                    let curr = Math.min(4, Math.max(2, pot - Math.floor(Math.random() * 2) - 3)); 
+                    let rookie = createPlayer(pos, age, curr, pot, false, false, false, "", team);
+                    rookie.salary = 1; rookie.contractYears = 4; rookie.tier = 2; rookie.teamTenure = 0;
+                    rookie.lastChangeReason = "🎯 AI 신인 육성 영입";
+                    recordTeamChange(rookie, team, currentYear);
+                    roster.push(rookie);
+                }
+
+                let foreignCount = roster.filter(p => p.isForeign).length;
+                while (foreignCount < 2) {
+                    let newCurr = 9;
+                    let randomPos = (roster.filter(p => p.isForeign && p.position === '선발').length === 0) ? '선발' : '외야수';
+                    let newForeign = createPlayer(randomPos, Math.floor(Math.random() * 7) + 25, newCurr, 10, true, false, false, "", team);
+                    newForeign.salary = Math.floor(Math.random() * 3) + 10;
+                    newForeign.contractYears = 1; newForeign.tier = 1;
+                    newForeign.lastChangeReason = "🌐 AI 독자 용병 수급";
+                    recordTeamChange(newForeign, team, currentYear);
+                    roster.push(newForeign);
+                    foreignCount++;
+                }
+
+                allTeamRosters[team] = roster;
+            }
+        });
+
+        KBO_TEAMS.forEach(team => {
+            let teamRoster = allTeamRosters[team] || [];
+            let teamTotalSal = teamRoster.reduce((s, p) => s + p.salary, 0);
+            let effectiveCap = getEffectiveCap(team);
+
+            let excessPenalty = 0;
+            if (teamTotalSal > effectiveCap) {
+                let excess = teamTotalSal - effectiveCap;
+                excessPenalty = Math.round(excess * 0.5 * 10) / 10;
+            }
+            teamDeadCapMap[team] = excessPenalty;
+        });
+
+        KBO_TEAMS.forEach(team => {
+            let postedList = postedPlayersMap[team] || [];
+            let returningList = [];
+
+            postedList.forEach(p => {
+                p.postedMLBYears += 1; p.age += 1;
+                if (p.age >= 30) {
+                    let mlbDeclineChance = 0.20 + (p.age - 30) * 0.08;
+                    if (Math.random() < mlbDeclineChance) p.current = Math.max(1, p.current - 1);
+                }
+
+                if (p.current < 12) {
+                    p.hasMLBBadge = true;
+                    p.lastChangeReason = "🇺🇸 메이저리그 복귀";
+                    recordTeamChange(p, team, currentYear);
+                    returningList.push(p);
+                    log(`✈️ <b>[메이저리그 복귀]</b> [${team}]의 ${p.name} 선수가 메이저리그 진출 ${p.postedMLBYears}년 만에 친정팀으로 복귀합니다!`);
+                }
+            });
+
+            postedPlayersMap[team] = postedList.filter(p => p.current >= 12);
+            if (returningList.length > 0) allTeamRosters[team] = (allTeamRosters[team] || []).concat(returningList);
+        });
+
+        resignCandidatesMap = {};
+        postingCandidatesMap = {};
+
+        KBO_TEAMS.forEach(team => {
+            let roster = allTeamRosters[team] || [];
+            let expiredList = [];
+            let postingList = [];
+
+            roster.forEach(p => {
+                p.age += 1;
+                p.teamTenure += 1;
+
+                if (p.tier === 1 || p.age >= 24) p.contractYears -= 1;
+
+                let isRegularPosting = (!p.isLegend && !p.hasMLBBadge && p.teamTenure >= 7);
+                let isLegendPosting = (p.isLegend && !p.hasMLBBadge && p.teamTenure >= 5);
+
+                if ((isRegularPosting || isLegendPosting) && p.current >= 12) postingList.push(p);
+
+                if (p.contractYears <= 0) {
+                    // 재계약 연봉 기준 커브 조정 (C: 2.5억 기준, C+: 3.5억 기준)
+                    let baseSal = 1;
+                    if (p.current >= 15) baseSal = 18;
+                    else if (p.current === 14) baseSal = 15;
+                    else if (p.current === 13) baseSal = 12;
+                    else if (p.current === 12) baseSal = 10;
+                    else if (p.current === 11) baseSal = 8;
+                    else if (p.current === 10) baseSal = 6;
+                    else if (p.current === 9) baseSal = 5;
+                    else if (p.current === 8) baseSal = 4;
+                    else if (p.current === 7) baseSal = 3.5;
+                    else if (p.current === 6) baseSal = 2.5;
+                    else if (p.current === 5) baseSal = 2;
+                    else baseSal = 1;
+
+                    if (p.isLegend || p.hasMLBBadge) baseSal = Math.max(1, Math.round(baseSal * 0.85));
+                    
+                    if (p.isForeign) {
+                        p.resignOptions = [
+                            { label: '옵션1: 1년 계약 (용병 요구연봉 감축 적용)', years: 1, salary: Math.max(1, Math.round(baseSal * 0.85)) }
+                        ];
+                    } else {
+                        let longYears = p.age >= 33 ? 2 : 4;
+                        let longLabel = p.age >= 33 ? `옵션2: 2년 계약 (33세 이상 노장 계약)` : `옵션2: 4년 계약 (장기 계약)`;
+                        let salaryMult = p.age >= 33 ? 0.95 : (isRegularPosting ? 0.82 : 0.90);
+
+                        p.resignOptions = [
+                            { label: `옵션1: 1년 계약 (${isRegularPosting ? '👑 성골 우대 단년' : '단년'} 계약)`, years: 1, salary: Math.max(1, Math.round(baseSal * (isRegularPosting ? 1.10 : 1.25))) },
+                            { label: longLabel, years: longYears, salary: Math.max(1, Math.round(baseSal * salaryMult)) }
+                        ];
+                    }
+
+                    expiredList.push(p);
+                }
+            });
+
+            postingCandidatesMap[team] = postingList;
+
+            if (!playersInRoom.some(plr => plr.teamName === team)) {
+                expiredList.forEach(p => {
+                    let opt = p.resignOptions[1] || p.resignOptions[0];
+                    p.salary = opt.salary;
+                    p.contractYears = opt.years;
+                    if (p.isFA) {
+                        p.isFA = false;
+                        p.isUntradeable = false;
+                    }
+                });
+                resignCandidatesMap[team] = [];
+            } else {
+                resignCandidatesMap[team] = expiredList;
+            }
+        });
+
+        let pCount = Math.max(1, playersInRoom.length);
+        let rookieCount = pCount * 5;
+
+        draftPassedMap = {};
+        KBO_TEAMS.forEach(t => draftPassedMap[t] = false);
+
+        draftPool = Array.from({length: rookieCount}, (_, idx) => {
+            let isLegend = Math.random() < 0.05;
+            let legendInfo = LEGEND_NAMES[Math.floor(Math.random() * LEGEND_NAMES.length)];
+            let pos = isLegend ? legendInfo.pos : POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+            let name = isLegend ? legendInfo.name : getRandomKoreanName();
+
+            let age = Math.floor(Math.random() * 4) + 19;
+            let pot = 8; 
+
+            let rand = Math.random();
+            if (isLegend) {
+                pot = Math.floor(Math.random() * 4) + 12;
+            } else if (rand < 0.45) {
+                pot = 8; 
+            } else if (rand < 0.80) {
+                pot = 9; 
+            } else if (rand < 0.95) {
+                pot = 10; 
+            } else {
+                pot = 11; 
+            }
+
+            let curr = Math.min(4, Math.max(2, pot - Math.floor(Math.random() * 2) - 3)); 
+
+            let p = createPlayer(pos, age, curr, pot, false, false, isLegend, name, "");
+            p.salary = 1; p.contractYears = 4; p.lastChangeReason = "🎯 신인 입단";
+            return p;
+        });
+
+        phase = 'NEW_SEASON_READY';
+        setPipAlert(`오프시즌 진입`);
+        broadcastGameState();
+        switchTab('offseason');
+    }
+
+    function processPostingDecision(teamName, playerId, accept) {
+        let candidates = postingCandidatesMap[teamName] || [];
+        let player = candidates.find(p => p.id === playerId);
+        if (!player) return;
+
+        if (accept) {
+            allTeamRosters[teamName] = (allTeamRosters[teamName] || []).filter(p => p.id !== playerId);
+            if (!postedPlayersMap[teamName]) postedPlayersMap[teamName] = [];
+            player.postedMLBYears = 0;
+            player.lastChangeReason = "✈️ MLB 진출";
+            postedPlayersMap[teamName].push(player);
+
+            let tagStr = player.isLegend ? "⭐ 별선수" : "👑 성골";
+
+            if (teamName === myTeamName) {
+                gmLevel += 1;
+                log(`✈️ <b>[해외 포스팅 진출 성공!]</b> ${tagStr} ${player.name} 선수가 메이저리그 진출에 성공했습니다! <b>(단장 레벨 +1 상승 ➔ Lv.${gmLevel})</b>`);
+            } else {
+                log(`✈️ <b>[해외 포스팅 진출 성공]</b> [${teamName}]의 ${tagStr} ${player.name} 선수가 메이저리그로 진출합니다!`);
+            }
+        } else {
+            log(`✈️ <b>[포스팅 거절]</b> [${teamName}] 구단이 ${player.name} 선수의 해외 포스팅 요청을 잔류시켰습니다.`);
+        }
+
+        postingCandidatesMap[teamName] = candidates.filter(p => p.id !== playerId);
+    }
+
+    function handlePostingChoice(playerId, accept) {
+        if (isHost) {
+            processPostingDecision(myTeamName, playerId, accept);
+            broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_POSTING_DECISION', teamName: myTeamName, playerId, accept });
+        }
+    }
+
+    function handleResignChoice(playerId, optionIdx, accept) {
+        if (isHost) {
+            processResignAction(myTeamName, playerId, optionIdx, accept);
+            broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_RESIGN', teamName: myTeamName, playerId, optionIdx, accept });
+        }
+    }
+
+    function processResignAction(teamName, playerId, optionIdx, accept) {
+        let candidates = resignCandidatesMap[teamName] || [];
+        let player = candidates.find(p => p.id === playerId);
+        if (!player) return;
+
+        if (accept && optionIdx >= 0 && player.resignOptions) {
+            let selectedOpt = player.resignOptions[optionIdx] || player.resignOptions[0];
+            player.salary = selectedOpt.salary;
+            player.contractYears = selectedOpt.years;
+            
+            if (player.isFA) {
+                player.isFA = false;
+                player.isUntradeable = false;
+                log(`📝 <b>[FA 재계약 체결]</b> ${player.name} 선수가 구단과 재계약을 맺어 FA 신분 및 제약이 해제되었습니다.`);
+            }
+        } else {
+            // 재계약 거절 및 방출 처리
+            allTeamRosters[teamName] = (allTeamRosters[teamName] || []).filter(p => p.id !== playerId);
+            log(`👋 <b>[재계약 거절/방출]</b> [${teamName}] 구단이 ${player.name} 선수와의 재계약을 포기하고 방출 처리했습니다.`);
+        }
+
+        resignCandidatesMap[teamName] = candidates.filter(p => p.id !== playerId);
+    }
+
+    function getCurrentDraftTurnTeam() {
+        let orderTeams = standings.length > 0 ? [...standings].reverse().map(t => t.name) : KBO_TEAMS;
+        let humanTeams = playersInRoom.map(p => p.teamName);
+        let humanOrderTeams = orderTeams.filter(t => humanTeams.includes(t));
+
+        if (humanOrderTeams.length === 0) return null;
+
+        for (let round = 0; round < 5; round++) {
+            for (let team of humanOrderTeams) {
+                if (draftPassedMap[team]) continue;
+                let picks = draftPicksCountMap[team] || 0;
+                if (picks <= round) return team;
+            }
+        }
+        return null;
+    }
+
+    function processDraftPick(teamName, playerId) {
+        let player = draftPool.find(p => p.id === playerId);
+        if (!player) return;
+
+        player.salary = 1; player.contractYears = 4; player.tier = 2;
+        player.teamTenure = 0; player.seasonStartCurrent = player.current;
+        player.lastChangeReason = "🎯 드래프트 지명 입단";
+        
+        recordTeamChange(player, teamName, currentYear);
+
+        let roster = allTeamRosters[teamName] || [];
+        roster.push(player);
+
+        draftPicksCountMap[teamName] = (draftPicksCountMap[teamName] || 0) + 1;
+        draftPool = draftPool.filter(p => p.id !== playerId);
+        log(`🎯 <b>[신인 지명]</b> [${teamName}] 구단이 ${player.position} <b>${player.name}</b> 선수를 지명했습니다!`);
+    }
+
+    function processDraftPass(teamName) {
+        draftPassedMap[teamName] = true;
+        log(`✋ <b>[드래프트 포기]</b> [${teamName}] 구단이 신인 드래프트 지명을 포기했습니다.`);
+    }
+
+    function passDraft() {
+        let currentTurnTeam = getCurrentDraftTurnTeam();
+        if (currentTurnTeam !== myTeamName) {
+            alert(`[포기 불가] 현재는 [${currentTurnTeam || '지명 완료'}] 구단의 드래프트 순서입니다.`);
+            return;
+        }
+
+        if (confirm("신인 드래프트를 포기하시겠습니까? 이번 오프시즌 동안 더 이상 신인을 지명하지 않고 다음 플레이어에게 턴이 넘어갑니다.")) {
+            if (isHost) {
+                processDraftPass(myTeamName); broadcastGameState();
+            } else {
+                hostConn.send({ type: 'ACTION_DRAFT_PASS', teamName: myTeamName });
+            }
+        }
+    }
+
+    function pickDraft(playerId) {
+        let currentTurnTeam = getCurrentDraftTurnTeam();
+        if (currentTurnTeam !== myTeamName) {
+            alert(`[지명 불가] 현재는 [${currentTurnTeam || '지명 완료'}] 구단의 드래프트 지명 순서입니다.`);
+            return;
+        }
+
+        addGMExp(2);
+
+        if (isHost) {
+            processDraftPick(myTeamName, playerId); broadcastGameState();
+        } else {
+            hostConn.send({ type: 'ACTION_DRAFT_PICK', teamName: myTeamName, playerId });
+        }
+    }
+
+    function renderOffseason() {
+        const postingContainer = document.getElementById('posting-requests-container');
+        if (postingContainer) {
+            postingContainer.innerHTML = '';
+            const myPostings = postingCandidatesMap[myTeamName] || [];
+            if (myPostings.length === 0) {
+                postingContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; padding:10px; background:#f8fafc; border-radius:6px; border:1px solid var(--border-color);">현재 해외 포스팅을 요청한 선수가 없습니다.</p>`;
+            } else {
+                myPostings.forEach(p => {
+                    const badgesHTML = getPlayerBadgesHTML(p);
+                    const tagTitle = p.isLegend ? "⭐ 별선수 포스팅 도전 요청 (5년 근속 충족)" : "👑 성골 포스팅 도전 요청 (7년 근속 충족)";
+
+                    postingContainer.innerHTML += `
+                        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                                <b style="color:var(--accent-blue); font-size:0.95rem;">✈️ 메이저리그 ${tagTitle}</b><br>
+                                <span style="font-size:0.88rem;"><b>${p.position} ${p.name}</b>${badgesHTML} (${p.age}세, 구단 ${p.teamTenure}년 근속) - 현재 능력: ${getGradeBadgeHTML(p.current)}</span>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-success" onclick="handlePostingChoice('${p.id}', true)">수락 (포스팅 승인 & 단장레벨 +1)</button>
+                                <button class="btn btn-danger" onclick="handlePostingChoice('${p.id}', false)">거절 (팀 잔류)</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        const resignList = document.getElementById('resign-list');
+        if (resignList) {
+            resignList.innerHTML = '';
+            const myCandidates = resignCandidatesMap[myTeamName] || [];
+            if (myCandidates.length === 0) {
+                resignList.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted);">현재 재계약 협상 대상 선수가 없습니다.</td></tr>`;
+            } else {
+                myCandidates.forEach(p => {
+                    const badgesHTML = getPlayerBadgesHTML(p);
+                    const opt1 = p.resignOptions[0];
+                    const opt2 = p.resignOptions[1];
+
+                    let optionsBtns = `<button class="btn btn-success" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', 0, true)">1년 / ${opt1.salary}억</button>`;
+                    if (opt2) {
+                        optionsBtns += ` <button class="btn btn-info" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', 1, true)">${opt2.years}년 / ${opt2.salary}억</button>`;
+                    }
+                    optionsBtns += ` <button class="btn btn-danger" style="font-size:0.72rem; padding:4px 6px;" onclick="handleResignChoice('${p.id}', -1, false)">❌ 방출</button>`;
+
+                    resignList.innerHTML += `
+                        <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                            <td>${p.position}</td>
+                            <td><b>${p.name}</b>${badgesHTML}</td>
+                            <td>${p.age}세</td>
+                            <td>${getGradeBadgeHTML(p.current)}</td>
+                            <td>${getGradeBadgeHTML(p.potential)}</td>
+                            <td><div style="display:flex; gap:4px; justify-content:center;">${optionsBtns}</div></td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        const draftPicksEl = document.getElementById('draft-picks-status');
+        const passBtnEl = document.getElementById('draft-pass-btn');
+        const currentTurnTeam = getCurrentDraftTurnTeam();
+        const isMyTurn = (currentTurnTeam === myTeamName);
+
+        if (passBtnEl) passBtnEl.disabled = !isMyTurn;
+
+        if (draftPicksEl) {
+            let orderTeams = standings.length > 0 ? [...standings].reverse().map(t => t.name) : KBO_TEAMS;
+            let humanTeams = playersInRoom.map(p => p.teamName);
+            let humanOrderTeams = orderTeams.filter(t => humanTeams.includes(t));
+
+            let pickStatusText = humanOrderTeams.map((t, idx) => {
+                let picks = draftPicksCountMap[t] || 0;
+                let isPassed = draftPassedMap[t];
+                let isTurn = (t === currentTurnTeam);
+                let statusStr = isPassed ? '<b style="color:#ef4444;">[포기]</b>' : `[${picks}/5명]`;
+                let style = isTurn ? 'color:var(--accent-red); font-weight:800; border:1px solid #ef4444; padding:2px 6px; border-radius:4px; background:#fff0f0;' : (t === myTeamName ? 'color:var(--accent-blue); font-weight:bold;' : '');
+                return `<span style="${style}">${idx+1}순 ${t} ${statusStr} ${isTurn ? '👈 (현재 턴)' : ''}</span>`;
+            }).join(' ➔ ');
+
+            draftPicksEl.innerHTML = pickStatusText || '참가 유저 없음';
+        }
+
+        const draftList = document.getElementById('draft-list');
+        if (draftList) {
+            draftList.innerHTML = '';
+            if (draftPool.length === 0 || !currentTurnTeam) {
+                draftList.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);">신인 드래프트 지명이 모두 완료되었거나 오프시즌 진입 대기 중입니다.</td></tr>`;
+            } else {
+                draftPool.forEach(p => {
+                    const badgesHTML = getPlayerBadgesHTML(p);
+                    let btnDisabledStr = !isMyTurn ? 'disabled' : '';
+                    let btnText = isMyTurn ? '지명하기' : (currentTurnTeam ? `[${currentTurnTeam}] 턴` : '지명 완료');
+
+                    draftList.innerHTML += `
+                        <tr class="player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                            <td>${p.position}</td>
+                            <td><b>${p.name}</b>${badgesHTML}</td>
+                            <td>${p.age}세</td>
+                            <td>${getGradeBadgeHTML(p.current)}</td>
+                            <td>${getGradeBadgeHTML(p.potential)}</td>
+                            <td><b>1억 원</b></td>
+                            <td><button class="btn btn-success" ${btnDisabledStr} onclick="pickDraft('${p.id}')">${btnText}</button></td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+    }
+
+    function startNextSeason() {
+        if (!isHost) return;
+
+        resetAllReadies();
+
+        KBO_TEAMS.forEach(team => {
+            let accruedPenalty = teamDeadCapMap[team] || 0.0;
+            teamLastSeasonCapPenaltyMap[team] = accruedPenalty;
+            teamDeadCapMap[team] = 0.0;
+            emergencyRefillCountMap[team] = 0; 
+        });
+
+        KBO_TEAMS.forEach(team => {
+            if (allTeamRosters[team]) {
+                allTeamRosters[team] = allTeamRosters[team].filter(p => p.contractYears > 0);
+                allTeamRosters[team].forEach(p => { p.seasonStartCurrent = p.current; });
+            }
+        });
+
+        currentYear += 1;
+        phase = 'Q1_READY';
+        faSignedCountMap = {}; foreignSignedCountMap = {}; draftPicksCountMap = {};
+        draftPassedMap = {}; directTradeUsedMap = {}; incomingTradeProposals = [];
+        KBO_TEAMS.forEach(t => { 
+            draftPicksCountMap[t] = 0; draftPassedMap[t] = false; foreignSignedCountMap[t] = 0; directTradeUsedMap[t] = false; 
+            syncRosterTeamHistory(t); 
+        });
+
+        foreignDraftOrder = [...KBO_TEAMS].sort(() => Math.random() - 0.5);
+
+        generateMarketPool();
+        resetStandings();
+        tradeProposalsMap = {}; resignCandidatesMap = {};
+        psData = { top5: [], currentRound: 'WC', gameNum: 1, teamA: null, teamB: null, winsA: 0, winsB: 0, targetWins: 0, wcWinner: null, wcLoser: null, semiWinner: null, semiPoLoser: null, poWinner: null, poLoser: null, ksWinner: null, ksRunnerUp: null };
+
+        setPipAlert(`${currentYear}년 시즌 개막`);
+        broadcastGameState();
+        switchTab('season');
+        log(`<b>[${currentYear}년 시즌 개막]</b> 새로운 시즌이 시작되었습니다!`);
+    }
+
+    function renderStandings() {
+        const list = document.getElementById('standings-list');
+        list.innerHTML = '';
+
+        standings.forEach((t, idx) => {
+            const isMyTeam = (t.name === myTeamName);
+            const powerDisplay = getGradeBadgeHTML(valToGrade(t.powerNum));
+
+            let roster = allTeamRosters[t.name] || [];
+            let totalSal = roster.reduce((s, p) => s + p.salary, 0);
+            let effectiveCap = getEffectiveCap(t.name);
+            
+            let isHumanTeam = playersInRoom.some(p => p.teamName === t.name);
+            let capDisplay = isHumanTeam ? `${totalSal}억 / ${effectiveCap}억` : '-';
+            let salStyle = (isHumanTeam && totalSal > effectiveCap) ? 'color:var(--accent-red); font-weight:bold;' : 'color:var(--text-dark);';
+
+            list.innerHTML += `
+                <tr style="${isMyTeam ? 'background-color: #f0f9ff; font-weight: bold;' : ''}">
+                    <td>${idx + 1}</td>
+                    <td><b>${t.name}</b></td>
+                    <td>${t.gmInfo || '컴퓨터 AI'}</td>
+                    <td>${powerDisplay}</td>
+                    <td style="${salStyle}">${capDisplay}</td>
+                    <td>${t.wins}</td>
+                    <td>${t.losses}</td>
+                    <td>${t.draws}</td>
+                    <td>${t.rate}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function switchHistorySubTab(subTab) {
+        currentHistorySubTab = subTab;
+        document.getElementById('hist-btn-seasons').classList.toggle('active', subTab === 'seasons');
+        document.getElementById('hist-btn-stats').classList.toggle('active', subTab === 'stats');
+
+        document.getElementById('history-seasons-view').style.display = (subTab === 'seasons') ? 'block' : 'none';
+        document.getElementById('history-stats-view').style.display = (subTab === 'stats') ? 'block' : 'none';
+
+        renderHistory();
+    }
+
+    function renderHistory() {
+        if (currentHistorySubTab === 'seasons') renderHistorySeasons();
+        else renderHistoryStats();
+    }
+
+    function renderHistorySeasons() {
+        const container = document.getElementById('history-seasons-container');
+        if (!container) return;
+
+        if (seasonHistory.length === 0) {
+            container.innerHTML = `<p style="text-align: center; padding: 30px; color: var(--text-muted);">아직 완료된 시즌 기록이 없습니다.</p>`;
+            return;
+        }
+
+        const yearsSet = [...new Set(seasonHistory.map(h => h.year))].sort((a,b) => b - a);
+        container.innerHTML = '';
+
+        yearsSet.forEach(yr => {
+            const yearRecords = seasonHistory.filter(h => h.year === yr).sort((a,b) => a.rankNum - b.rankNum);
+            const winnerRec = yearRecords.find(h => h.isWinner);
+            const runnerUpRec = yearRecords.find(h => h.isRunnerUp);
+
+            let tableRows = yearRecords.map(r => `
+                <tr style="${r.teamName === myTeamName ? 'background-color:#f0f9ff; font-weight:bold;' : ''}">
+                    <td><b>${r.rankNum}위</b></td>
+                    <td>${r.teamName}</td>
+                    <td>${r.gmName} (${r.isHuman ? '인간' : 'AI'})</td>
+                    <td>${r.rankText}</td>
+                    <td>${getGradeBadgeHTML(r.power)}</td>
+                </tr>
+            `).join('');
+
+            container.innerHTML += `
+                <div class="season-history-card">
+                    <div style="font-weight:bold; font-size:1.05rem; color:var(--primary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>📅 ${yr}년 KBO 리그 최종 결과</span>
+                        <span style="font-size:0.85rem; color:var(--accent-gold);">
+                            🏆 우승: <b>${winnerRec ? winnerRec.teamName : '미정'}</b> | 🥈 준우승: <b>${runnerUpRec ? runnerUpRec.teamName : '미정'}</b>
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>순위</th><th>구단명</th><th>단장명</th><th>최종 포스트시즌 성적</th><th>당시 팀 전력</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function renderHistoryStats() {
+        const list = document.getElementById('history-stats-list');
+        if (!list) return;
+
+        if (seasonHistory.length === 0) {
+            list.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">아직 완료된 시즌 기록이 없습니다.</td></tr>`;
+            return;
+        }
+
+        let statsMap = {};
+        seasonHistory.forEach(h => {
+            let key = `${h.teamName}_${h.gmName}`;
+            if (!statsMap[key]) {
+                statsMap[key] = { teamName: h.teamName, gmName: h.gmName, isHuman: h.isHuman, seasons: 0, wins: 0, runnerUps: 0, totalRank: 0 };
+            }
+            statsMap[key].seasons += 1;
+            if (h.isWinner) statsMap[key].wins += 1;
+            if (h.isRunnerUp) statsMap[key].runnerUps += 1;
+            statsMap[key].totalRank += h.rankNum;
+        });
+
+        let statsArray = Object.values(statsMap);
+        statsArray.sort((a,b) => (b.wins - a.wins) || (b.runnerUps - a.runnerUps) || ((a.totalRank/a.seasons) - (b.totalRank/b.seasons)));
+
+        list.innerHTML = '';
+        statsArray.forEach(st => {
+            let avgRank = (st.totalRank / st.seasons).toFixed(2);
+            let isMy = (st.teamName === myTeamName);
+
+            list.innerHTML += `
+                <tr style="${isMy ? 'background-color:#f0f9ff; font-weight:bold;' : ''}">
+                    <td><b>${st.teamName}</b></td>
+                    <td>${st.gmName} ${st.isHuman ? '<span class="tier-badge tier-1">인간</span>' : '<span class="tier-badge tier-2">AI</span>'}</td>
+                    <td>${st.seasons}시즌</td>
+                    <td><b style="color:var(--accent-gold);">${st.wins}회</b></td>
+                    <td><b style="color:var(--accent-blue);">${st.runnerUps}회</b></td>
+                    <td><b>${avgRank}위</b></td>
+                </tr>
+            `;
+        });
+    }
+
+    function openPipWindow() {
+        const win = document.getElementById('pip-window');
+        win.style.display = 'flex';
+        win.classList.remove('minimized');
+    }
+
+    function closePipWindow() { document.getElementById('pip-window').style.display = 'none'; }
+    function togglePipMinimize() { document.getElementById('pip-window').classList.toggle('minimized'); }
+
+    const pipWin = document.getElementById('pip-window');
+    const pipHeader = document.getElementById('pip-header');
+    let isDragging = false, startX, startY, initialLeft, initialTop;
+
+    if (pipHeader) {
+        pipHeader.addEventListener('mousedown', (e) => {
+            isDragging = true; startX = e.clientX; startY = e.clientY;
+            const rect = pipWin.getBoundingClientRect();
+            initialLeft = rect.left; initialTop = rect.top;
+            pipWin.style.left = initialLeft + 'px'; pipWin.style.top = initialTop + 'px';
+            pipWin.style.right = 'auto'; pipWin.style.bottom = 'auto';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            pipWin.style.left = (initialLeft + dx) + 'px'; pipWin.style.top = (initialTop + dy) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; });
+    }
+
+    function renderPipUI() {
+        const chipsContainer = document.getElementById('pip-status-chips');
+        if (chipsContainer) {
+            chipsContainer.innerHTML = '';
+            playersInRoom.forEach(p => {
+                const isReady = !!p.isSeasonReady;
+                chipsContainer.innerHTML += `<div class="multi-player-chip ${isReady ? 'ready' : 'not-ready'}">${isReady ? '⭕' : '❌'} <b>${p.name}</b> (${p.teamName})</div>`;
+            });
+        }
+
+        const pipReadyBtn = document.getElementById('pip-ready-btn');
+        if (pipReadyBtn) {
+            pipReadyBtn.innerText = mySeasonReady ? "내 준비 (⭕ O)" : "내 준비 (❌ X)";
+            pipReadyBtn.className = mySeasonReady ? "btn btn-success" : "btn btn-warning";
+            pipReadyBtn.style.fontSize = "0.7rem"; pipReadyBtn.style.padding = "2px 6px";
+        }
+
+        const teamSelect = document.getElementById('pip-team-select');
+        const growthTeamSelect = document.getElementById('pip-growth-team-select');
+
+        [teamSelect, growthTeamSelect].forEach(selectEl => {
+            if (selectEl) {
+                const currentSelectedVal = selectEl.value;
+                selectEl.innerHTML = '';
+                KBO_TEAMS.forEach(t => {
+                    const p = playersInRoom.find(x => x.teamName === t);
+                    const gmName = p ? p.name : 'AI';
+                    const lifecycleState = aiTeamLifecycleMap[t] ? ` [${getLifecycleLabel(aiTeamLifecycleMap[t].phase)}]` : '';
+                    const selected = (currentSelectedVal ? t === currentSelectedVal : t === myTeamName) ? 'selected' : '';
+                    selectEl.innerHTML += `<option value="${t}" ${selected}>${t} (${gmName}${p ? '' : lifecycleState})</option>`;
+                });
+            }
+        });
+
+        renderPipLineup();
+        renderPipGrowthList();
+    }
+
+    function renderPipLineup() {
+        const teamSelect = document.getElementById('pip-team-select');
+        if (!teamSelect) return;
+        const selectedTeam = teamSelect.value || myTeamName;
+
+        const lineupContainer = document.getElementById('pip-lineup-container');
+        if (!lineupContainer) return;
+
+        const roster = allTeamRosters[selectedTeam] || [];
+        const tier1Roster = roster.filter(p => p.tier === 1).sort((a,b) => b.current - a.current);
+
+        if (tier1Roster.length === 0) {
+            lineupContainer.innerHTML = `<span style="color:var(--text-muted);">1군 엔트리 미구성</span>`;
+            return;
+        }
+
+        lineupContainer.innerHTML = '';
+        tier1Roster.forEach(p => {
+            const role = getSlotRoleForPlayer(roster, p);
+            let roleBadge = '';
+            if (role === '주전') roleBadge = `<span class="slot-badge-starter" style="font-size:0.65rem;">🟢</span>`;
+            else if (role === '후보') roleBadge = `<span class="slot-badge-backup" style="font-size:0.65rem;">🔵</span>`;
+            else if (role === '예비') roleBadge = `<span class="slot-badge-reserve" style="font-size:0.65rem;">🟣</span>`;
+
+            const gradeDisplay = getGradeBadgeHTML(p.current);
+            const badgesHTML = getPlayerBadgesHTML(p);
+
+            let startVal = p.seasonStartCurrent || p.current;
+            let diff = p.current - startVal;
+            let diffText = '';
+            if (diff > 0) diffText = `<b style="color:#10b981; font-size:0.72rem; margin-left:3px;">(+${diff})</b>`;
+            else if (diff < 0) diffText = `<b style="color:#ef4444; font-size:0.72rem; margin-left:3px;">(${diff})</b>`;
+            else diffText = `<span style="color:#94a3b8; font-size:0.72rem; margin-left:3px;">(-)</span>`;
+
+            lineupContainer.innerHTML += `
+                <div class="pip-lineup-item player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')">
+                    <span>${roleBadge}<b>${p.position}</b> ${p.name}${badgesHTML} (${p.age}세) ${diffText}</span>
+                    <span>${gradeDisplay} <b>${p.salary}억</b></span>
+                </div>
+            `;
+        });
+    }
+
+    function renderPipGrowthList() {
+        const teamSelect = document.getElementById('pip-growth-team-select');
+        const filterSelect = document.getElementById('pip-growth-filter-select');
+        const container = document.getElementById('pip-growth-container');
+        if (!teamSelect || !container) return;
+
+        const selectedTeam = teamSelect.value || myTeamName;
+        const subFilter = filterSelect ? filterSelect.value : 'ALL';
+        const roster = allTeamRosters[selectedTeam] || [];
+
+        let allLogs = [];
+        roster.forEach(p => {
+            let startVal = p.seasonStartCurrent || p.current;
+            let diff = p.current - startVal;
+            allLogs.push({
+                year: currentYear, qNum: '시즌종합', player: p, startVal,
+                currVal: p.current, potVal: p.potential, diff,
+                reason: p.lastChangeReason || "🔄 기량 유지", tier: p.tier
+            });
+
+            if (p.growthHistory && p.growthHistory.length > 0) {
+                p.growthHistory.forEach(h => {
+                    if (h.year !== currentYear) {
+                        allLogs.push({
+                            year: h.year, qNum: `Q${h.qNum}`, player: p,
+                            startVal: h.oldCurr, currVal: h.newCurr, potVal: h.newPot,
+                            diff: h.newCurr - h.oldCurr, reason: h.reason, tier: h.tier
+                        });
+                    }
+                });
+            }
+        });
+
+        if (subFilter === '1군') allLogs = allLogs.filter(l => l.tier === 1);
+        else if (subFilter === '2군') allLogs = allLogs.filter(l => l.tier === 2);
+        else if (subFilter === 'UP') allLogs = allLogs.filter(l => l.diff > 0);
+        else if (subFilter === 'DOWN') allLogs = allLogs.filter(l => l.diff < 0);
+
+        if (allLogs.length === 0) {
+            container.innerHTML = `<span style="color:var(--text-muted); font-size:0.78rem;">해당 조건의 기량 변동 기록이 없습니다.</span>`;
+            return;
+        }
+
+        let yearsSet = [...new Set(allLogs.map(l => l.year))].sort((a,b) => b - a);
+        container.innerHTML = '';
+
+        yearsSet.forEach(yr => {
+            let yearLogs = allLogs.filter(l => l.year === yr);
+            yearLogs.sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff) || b.currVal - a.currVal);
+
+            container.innerHTML += `
+                <div class="pip-year-header">
+                    <span>📅 ${yr}년 시즌 기량 변동 리포트</span>
+                    <span style="font-size:0.7rem; color:#64748b; font-weight:normal;">(${yearLogs.length}건 기록)</span>
+                </div>
+            `;
+
+            yearLogs.forEach(l => {
+                let p = l.player;
+                let diffBadge = '';
+                if (l.diff > 0) diffBadge = `<b style="color:#10b981; font-weight:800;">▲ +${l.diff}</b>`;
+                else if (l.diff < 0) diffBadge = `<b style="color:#ef4444; font-weight:800;">▼ ${l.diff}</b>`;
+                else diffBadge = `<span style="color:#64748b; font-weight:bold;">- 0</span>`;
+
+                const tierTag = l.tier === 1 ? `<span class="tier-badge tier-1">1군</span>` : `<span class="tier-badge tier-2">2군</span>`;
+                const badgesHTML = getPlayerBadgesHTML(p);
+
+                container.innerHTML += `
+                    <div class="pip-lineup-item player-row-clickable" ondblclick="openPlayerBioModal('${p.id}')" style="flex-direction:column; align-items:flex-start; gap:2px; margin-bottom:4px;">
+                        <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                            <span>${tierTag} <b>${p.position}</b> ${p.name}${badgesHTML} (${p.age}세)</span>
+                            <span>${diffBadge}</span>
+                        </div>
+                        <div style="width:100%; display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:0.7rem;">
+                            <span>시작:${valToGrade(l.startVal)} ➔ 현재:${getGradeBadgeHTML(l.currVal)} (잠재:${valToGrade(l.potVal)})</span>
+                            <span style="color:#334155;">${l.reason}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function updateUI() {
+        const myInfo = playersInRoom.find(p => p.peerId === myPeerId);
+        const actualGMName = myInfo ? myInfo.name : myGMName;
+        document.getElementById('team-gm-title').innerText = `${myTeamName} ${actualGMName} 단장`;
+
+        const phaseDescMap = {
+            'Q1_READY': '📌 시즌 상태: 1분기 준비 중 (1~36경기)',
+            'TRADE_1': '📌 시즌 상태: 1분기 종료 / 36G 트레이드 마감',
+            'TRADE_2': '📌 시즌 상태: 2분기 종료 / 72G 인간 단장 직접 트레이드 가능',
+            'TRADE_3': '📌 시즌 상태: 3분기 종료 / 108G 트레이드 마감',
+            'PS_READY': '📌 시즌 상태: 정규시즌 종료 / 포스트시즌 준비',
+            'PS_IN_PROGRESS': '📌 시즌 상태: 🏆 포스트시즌 진행 중',
+            'OFFSEASON_READY': '📌 시즌 상태: 🏆 시즌 종료 / 오프시즌 진입 대기',
+            'NEW_SEASON_READY': '📌 시즌 상태: 오프시즌 진행 중 / 차기 시즌 준비'
+        };
+        document.getElementById('season-phase').innerText = phaseDescMap[phase] || `📌 시즌 상태: ${phase}`;
+
+        document.getElementById('current-year').innerText = currentYear;
+        document.getElementById('gm-level-text').innerText = `Lv.${gmLevel}`;
+        document.getElementById('gm-exp-text').innerText = `${gmExp}/100`;
+
+        const sizeInfo = TEAM_MARKET_SIZES[myTeamName] || { size: "중형", baseCap: 100 };
+        document.getElementById('market-size-text').innerText = `${sizeInfo.size}`;
+
+        const myRoster = getMyRoster();
+        const totalSalary = getMyTotalSalary();
+        const effectiveCap = getEffectiveCap(myTeamName);
+
+        document.getElementById('total-salary').innerText = totalSalary;
+        document.getElementById('salary-cap-text').innerText = effectiveCap;
+
+        const salaryEl = document.getElementById('total-salary');
+        if (salaryEl) {
+            if (totalSalary > effectiveCap * 1.3) salaryEl.style.color = '#ef4444';
+            else if (totalSalary > effectiveCap) salaryEl.style.color = '#f59e0b';
+            else salaryEl.style.color = '#10b981';
+        }
+
+        const deadCapVal = teamDeadCapMap[myTeamName] || 0.0;
+        document.getElementById('dead-cap-text').innerText = `${deadCapVal.toFixed(1)}`;
+
+        const tier1Count = myRoster.filter(p => p.tier === 1).length;
+        document.getElementById('tier1-count').innerText = tier1Count;
+
+        const pw = calculateTeamPowerBreakdown(myRoster);
+        document.getElementById('overall-power-grade').innerHTML = getGradeBadgeHTML(pw.overallGrade);
+        document.getElementById('pw-starter').innerHTML = getGradeBadgeHTML(pw.starterGrade);
+        document.getElementById('pw-reliever').innerHTML = getGradeBadgeHTML(pw.relieverGrade);
+        document.getElementById('pw-catcher').innerHTML = getGradeBadgeHTML(pw.catcherGrade);
+        document.getElementById('pw-infield').innerHTML = getGradeBadgeHTML(pw.infieldGrade);
+        document.getElementById('pw-outfield').innerHTML = getGradeBadgeHTML(pw.outfieldGrade);
+
+        updateSeasonStepBanner();
+
+        renderRoster();
+        renderMarket();
+        renderTradeBlock();
+        initDirectTradeUI();
+        updateInboxUI();
+        renderOffseason();
+        renderStandings();
+        renderHistory();
+        renderPipUI();
+    }
+
+    function updateSeasonStepBanner() {
+        const titleEl = document.getElementById('banner-phase-title');
+        const descEl = document.getElementById('banner-phase-desc');
+        if (!titleEl || !descEl) return;
+
+        const simQ1Btn = document.getElementById('sim-q1-btn');
+        const tradeBtn1 = document.getElementById('trade-btn-1');
+        const simQ2Btn = document.getElementById('sim-q2-btn');
+        const tradeBtn2 = document.getElementById('trade-btn-2');
+        const simQ3Btn = document.getElementById('sim-q3-btn');
+        const tradeBtn3 = document.getElementById('trade-btn-3');
+        const simQ4Btn = document.getElementById('sim-q4-btn');
+        const psBtn = document.getElementById('ps-btn');
+        const nextYearBtn = document.getElementById('next-year-btn');
+        const startNewSeasonBtn = document.getElementById('start-new-season-btn');
+
+        [simQ1Btn, tradeBtn1, simQ2Btn, tradeBtn2, simQ3Btn, tradeBtn3, simQ4Btn, psBtn, nextYearBtn, startNewSeasonBtn].forEach(b => {
+            if (b) b.disabled = true;
+        });
+
+        if (phase === 'Q1_READY') {
+            titleEl.innerText = '📌 1단계: 1분기 진행 준비 (1~36G)';
+            descEl.innerText = '[1. 1분기 진행] 버튼을 클릭해 36경기를 소화하세요.';
+            if (simQ1Btn) simQ1Btn.disabled = false;
+        } else if (phase === 'TRADE_1') {
+            titleEl.innerText = '📌 2단계: 1분기 종료 / 트레이드 검토 (36G)';
+            descEl.innerText = '컴퓨터 AI 구단과의 트레이드 오퍼를 확인하고 [2. 2분기 진행] 버튼을 누르세요.';
+            if (tradeBtn1) tradeBtn1.disabled = false;
+            if (simQ2Btn) simQ2Btn.disabled = false;
+        } else if (phase === 'TRADE_2') {
+            titleEl.innerText = '📌 3단계: 2분기 종료 / 유저 직접 트레이드 가능 (72G)';
+            descEl.innerText = '다른 인간 단장과 직접 트레이드를 보낼 수 있는 유일한 기회입니다! 검토 후 [3. 3분기 진행]을 누르세요.';
+            if (tradeBtn2) tradeBtn2.disabled = false;
+            if (simQ3Btn) simQ3Btn.disabled = false;
+        } else if (phase === 'TRADE_3') {
+            titleEl.innerText = '📌 4단계: 3분기 종료 / 최종 트레이드 마감 (108G)';
+            descEl.innerText = '이번 시즌 마지막 트레이드를 마무리하고 [4. 4분기 진행]을 눌러 정규시즌을 완주하세요.';
+            if (tradeBtn3) tradeBtn3.disabled = false;
+            if (simQ4Btn) simQ4Btn.disabled = false;
+        } else if (phase === 'PS_READY' || phase === 'PS_IN_PROGRESS') {
+            titleEl.innerText = '🏆 5단계: 정규시즌 종료 / 포스트시즌 진행';
+            descEl.innerText = '[포스트시즌 진행] 버튼을 반복 클릭하여 와일드카드부터 한국시리즈 우승 구단을 가리세요.';
+            if (psBtn) psBtn.disabled = false;
+        } else if (phase === 'OFFSEASON_READY') {
+            titleEl.innerText = '🎉 6단계: 한국시리즈 종료 / 오프시즌 진입';
+            descEl.innerText = '[오프시즌 진입] 버튼을 눌러 재계약 협상 및 신인 드래프트 단계로 진입하세요.';
+            if (nextYearBtn) nextYearBtn.disabled = false;
+        } else if (phase === 'NEW_SEASON_READY') {
+            titleEl.innerText = '🎯 7단계: 오프시즌 마무리 / 다음 시즌 개막';
+            descEl.innerText = '모든 재계약과 드래프트를 마친 후 [다음 시즌 개막] 버튼을 누르면 연도가 넘어갑니다.';
+            if (startNewSeasonBtn) startNewSeasonBtn.disabled = false;
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('nav .nav-btn').forEach(btn => btn.classList.remove('active'));
+
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
+
+        if (event && event.target && event.target.tagName === 'BUTTON') {
+            event.target.classList.add('active');
+        }
+
+        if (tabId === 'userTrade') initDirectTradeUI();
+    }
+
+    async function generateSaveCode() {
+        const fullData = getFullGameStatePayload();
+        const jsonStr = JSON.stringify(fullData);
+        const compressedBase64 = await compressSaveData(jsonStr);
+        document.getElementById('export-code-area').value = compressedBase64;
+        alert("Deflate 초압축 세이브 코드가 생성되었습니다!");
+    }
+
+    async function loadSaveCode() {
+        const code = document.getElementById('import-code-area').value.trim();
+        if (!code) { alert("세이브 코드를 입력해주세요."); return; }
+        try {
+            const decompressedJson = await decompressSaveData(code);
+            const loadedData = JSON.parse(decompressedJson);
+            syncGameState(loadedData);
+            document.getElementById('start-modal').style.display = 'none';
+            alert("세이브 데이터를 성공적으로 불러왔습니다!");
+        } catch(e) {
+            alert("유효하지 않거나 손상된 세이브 코드입니다.");
+        }
+    }
+
+    window.onload = function() {
+        salaryCap = TEAM_MARKET_SIZES[myTeamName].baseCap;
+    };
+</script>
+</body>
+</html>
