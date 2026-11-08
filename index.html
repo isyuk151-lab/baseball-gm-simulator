@@ -252,7 +252,14 @@
         .cheat-item-card { background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
         .cheat-item-card h4 { font-size: 0.85rem; color: var(--primary); font-weight: 800; }
         .cheat-item-card p { font-size: 0.75rem; color: var(--text-muted); }
-    </style>
+    
+        .help-btn { float:right; width:22px; height:22px; border-radius:50%; border:1px solid var(--accent-blue); background:#fff; color:var(--accent-blue); font-weight:800; font-size:0.78rem; cursor:pointer; line-height:1; margin:0 0 6px 8px; }
+        .help-btn:hover { background:var(--accent-blue); color:#fff; }
+        #help-modal .help-body { text-align:left; font-size:0.84rem; line-height:1.6; max-height:60vh; overflow-y:auto; color:#334155; }
+        #help-modal .help-body li { margin-left:18px; margin-bottom:4px; }
+        #pip-chat-log { flex:1; overflow-y:auto; background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:6px; font-size:0.78rem; min-height:140px; max-height:260px; }
+        #pip-chat-log div { margin-bottom:3px; word-break:break-all; }
+</style>
 </head>
 <body>
 
@@ -370,6 +377,14 @@
     </div>
 </div>
 
+<div id="help-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeHelp()">
+    <div class="start-modal" style="max-width:560px;">
+        <h2 id="help-title">도움말</h2>
+        <div id="help-body" class="help-body" style="margin-top:10px;"></div>
+        <button class="btn btn-info" style="margin-top:12px; width:100%;" onclick="closeHelp()">닫기</button>
+    </div>
+</div>
+
 <!-- PIP 창 -->
 <div id="pip-window" class="pip-window" style="display:none;">
     <div id="pip-header" class="pip-header">
@@ -382,7 +397,7 @@
     
     <div class="pip-nav-tabs">
         <button id="pip-tab-btn-status" class="active" onclick="switchPipTab('status')">👥 현황 및 라인업</button>
-        <button id="pip-tab-btn-growth" onclick="switchPipTab('growth')">📈 연도별 성장 (1·2군)</button>
+        <button id="pip-tab-btn-growth" onclick="switchPipTab('growth')">💬 채팅</button>
     </div>
 
     <div style="background:#f1f5f9; border-bottom:1px solid var(--border-color); padding:5px 10px; display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; color:var(--primary);">
@@ -414,18 +429,12 @@
     </div>
 
     <div id="pip-view-growth" class="pip-body" style="display:none;">
-        <div style="font-weight:bold; color:var(--primary); margin-bottom:2px;">📈 1·2군 전 선수 연도별 기량 변동 리포트</div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-            <select id="pip-growth-team-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()"></select>
-            <select id="pip-growth-filter-select" style="font-size:0.75rem; padding:3px; border-radius:4px; border:1px solid var(--border-color);" onchange="renderPipGrowthList()">
-                <option value="ALL">전체 보기</option>
-                <option value="1군">1군만</option>
-                <option value="2군">2군만</option>
-                <option value="UP">상승만 (▲)</option>
-                <option value="DOWN">하락만 (▼)</option>
-            </select>
+        <div style="font-weight:bold; color:var(--primary);">💬 단장 채팅</div>
+        <div id="pip-chat-log"></div>
+        <div style="display:flex; gap:4px; margin-top:4px;">
+            <input id="pip-chat-input" maxlength="200" placeholder="메시지 입력 후 Enter" style="flex:1; padding:4px 6px; font-size:0.78rem; border:1px solid var(--border-color); border-radius:4px;" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn-info" style="font-size:0.75rem; padding:3px 8px;" onclick="sendChat()">전송</button>
         </div>
-        <div id="pip-growth-container" class="pip-lineup-list" style="flex:1; overflow-y:auto; margin-top:4px;"></div>
     </div>
 </div>
 
@@ -435,6 +444,7 @@
             <div class="header-title">
                 <h1 id="team-gm-title">키움 히어로즈 단장</h1>
                 <p id="season-phase">📌 시즌 상태: 1분기 준비 중 (1~36경기)</p>
+                <button id="banner-advance-btn" class="btn btn-warning" style="margin-top:6px; font-size:0.78rem;" onclick="advanceFromBanner()">▶ 진행</button>
             </div>
             <div class="status-bar">
                 <div class="status-item">📅 연도: <span id="current-year">2026</span>년</div>
@@ -443,7 +453,7 @@
                 <div class="status-item">💰 실효 샐러리캡: <span id="total-salary">0</span>억 / <b id="salary-cap-text" style="color:#38bdf8;">90</b>억</div>
                 <div class="status-item">💸 차기 캡 패널티: <b id="dead-cap-text" style="color:#fca5a5;">0.0</b>억 원</div>
                 <div class="status-item">⚾ 1군 엔트리: <b id="tier1-count">0</b> / 28명</div>
-                <div class="status-item">⚡ 팀전력: <span id="overall-power-grade"></span></div>
+                <div class="status-item">⚡ 팀전력: <span id="overall-power-grade"></span> <span id="overall-power-num" style="opacity:.8; font-size:0.72rem;"></span></div>
             </div>
         </div>
         <div class="power-breakdown">
@@ -470,9 +480,10 @@
 
     <div id="roster" class="tab-content active">
         <div class="notice-box">
-            💡 <b>단장 멀티v1 시스템 가이드</b><br>
-            • <b>C/C+급 재계약 요구 연봉 정밀화</b>: C급 및 C+급 재계약 요구 연봉이 3억 원 안팎으로 미세 조정되었으며, 성골 C급은 2억 원, 성골 C+급은 3억 원(장기계약 기준)으로 합리적인 계약선을 갖춥니다.<br>
-            • <b>오프시즌 재계약 방출 기능 복구</b>: 만료 선수 협상 시 [❌ 방출] 버튼을 통해 거절 및 방출 처리가 가능합니다.
+            📖 <b>핵심 룰 요약</b><br>
+            • <b>계약 보호</b>: FA로 영입한 선수는 첫 계약 기간 동안 트레이드 불가이며, 24세 미만 2군 선수는 🛡️보존중으로 보호됩니다. B- 이상 주전급은 2군 말소를 거부하고, 33세 이상은 재계약이 최대 2년입니다.<br>
+            • <b>외국인</b>: 구단당 최대 <b>2명</b>까지 보유, 계약은 1년이며 매년 재계약할 수 있습니다. 트레이드 대상이 아닙니다.<br>
+            • <b>팀 능력치 기준</b>: 1군 선수만 반영됩니다. 포지션별로 능력치가 높은 순서대로 주전/후보/예비 슬롯에 가중치를 주어 평균을 내고, 선발 25% · 불펜 15% · 포수 10% · 내야 25% · 외야 25%로 합산합니다. 각 칸의 <b>?</b> 버튼에서 자세한 설명을 볼 수 있습니다.
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
@@ -516,13 +527,7 @@
     </div>
 
     <div id="market" class="tab-content">
-        <div id="market-preview-box" class="market-preview-box">
-            <div style="font-weight:800; font-size:0.92rem; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-                <span>🔮 [이번 시즌 영입 풀 스카우팅 리포트] <span id="preview-year-text">2026</span>년 시장 동향 분석</span>
-                <span class="tier-badge tier-1" style="font-size:0.75rem;">⭐ 유저 전용 영입 풀 확보 완료</span>
-            </div>
-            <div id="market-preview-content"></div>
-        </div>
+        
 
         <div class="sub-nav">
             <button class="market-btn active" onclick="switchMarket('foreign')">외국인 용병 (플레이어 전용 3명 생성 / 계약 1년)</button>
@@ -530,7 +535,11 @@
         </div>
 
         <div id="foreign-order-banner" class="draft-order-banner">
-            🌐 <b>외국인 용병 영입 순서 (참가 플레이어 전용)</b>: <span id="foreign-order-text"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>🎲 <b id="market-order-title">영입 순서 (랜덤 / 참가 플레이어 전용, AI 구단은 모두 패스)</b></span>
+                <button id="market-pass-btn" class="btn btn-danger" style="font-size:0.75rem; padding:3px 8px;" onclick="passMarket()">✋ 영입 포기 (Pass)</button>
+            </div>
+            <div id="foreign-order-text" style="margin-top:6px; font-weight:normal; color:#334155;"></div>
         </div>
 
         <div class="table-responsive">
@@ -658,6 +667,7 @@
 
         <div id="season-step-banner" class="season-step-banner">
             <div style="font-weight: 800; font-size: 0.95rem; color: #f59e0b;" id="banner-phase-title">📌 현재 진행 단계: 1분기 준비 중 (1~36G)</div>
+            <div id="banner-power-line" style="font-size:0.8rem; color:#e2e8f0; margin-top:4px;"></div>
             <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 4px;" id="banner-phase-desc">아래 [1. 1분기 진행] 버튼을 눌러 개막전 및 정규시즌 36경기를 진행하세요.</div>
         </div>
 
@@ -734,17 +744,16 @@
     </div>
 
     <div id="saveload" class="tab-content">
-        <h2>이어하기 코드 (Save / Load)</h2>
+        <h2>저장 / 불러오기 (파일)</h2>
         <div style="margin-bottom: 20px;">
-            <h3>현재 진행 상황 내보내기 (Export)</h3>
-            <p style="font-size:0.8rem; color:var(--accent-green); font-weight:bold; margin-top:2px;">📦 Deflate 고축소 압축 알고리즘이 적용되어 코드가 80% 이상 짧아졌습니다.</p>
-            <button class="btn btn-info" style="margin-top:6px;" onclick="generateSaveCode()">초압축 세이브 코드 생성하기</button>
-            <textarea id="export-code-area" readonly placeholder="[초압축 세이브 코드 생성하기] 버튼을 누르면 축소된 코드가 여기에 나타납니다."></textarea>
+            <h3>현재 진행 상황 파일로 저장</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">버튼을 누르면 .json 파일이 다운로드됩니다.</p>
+            <button class="btn btn-info" style="margin-top:6px;" onclick="saveGameFile()">💾 파일로 저장하기</button>
         </div>
         <div>
-            <h3>세이브 코드 불러오기 (Import)</h3>
-            <textarea id="import-code-area" placeholder="저장해둔 세이브 코드를 여기에 붙여넣으세요."></textarea>
-            <button class="btn btn-success" style="margin-top: 8px;" onclick="loadSaveCode()">코드 불러오기</button>
+            <h3>저장 파일 불러오기</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">멀티 플레이에서는 방장만 불러올 수 있습니다.</p>
+            <input type="file" id="load-file-input" accept=".json,application/json" style="margin-top:6px;" onchange="loadGameFile(this)">
         </div>
     </div>
 </div>
@@ -833,6 +842,9 @@
     let draftPicksCountMap = {};
     let draftPassedMap = {};
     let foreignDraftOrder = [];
+    let marketPassedMap = { foreign: {}, fa: {} };
+    let marketTurnIdx = { foreign: 0, fa: 0 };
+    let chatLog = [];
     let standings = [];
     let seasonHistory = [];
     let currentPosFilter = 'ALL';
@@ -1066,8 +1078,6 @@
         document.getElementById('pip-tab-btn-growth').classList.toggle('active', tab === 'growth');
         document.getElementById('pip-view-status').style.display = (tab === 'status') ? 'flex' : 'none';
         document.getElementById('pip-view-growth').style.display = (tab === 'growth') ? 'flex' : 'none';
-
-        if (tab === 'growth') renderPipGrowthList();
     }
 
     function startSingleGame() {
@@ -1181,6 +1191,10 @@
             processDraftPick(data.teamName, data.playerId); broadcastGameState();
         } else if (data.type === 'ACTION_DRAFT_PASS') {
             processDraftPass(data.teamName); broadcastGameState();
+        } else if (data.type === 'ACTION_MARKET_PASS') {
+            processMarketPass(data.teamName, data.marketType); broadcastGameState();
+        } else if (data.type === 'CHAT_SEND') {
+            addChat(data.msg, true);
         } else if (data.type === 'ACTION_RESIGN') {
             processResignAction(data.teamName, data.playerId, data.optionIdx, data.accept); broadcastGameState();
         } else if (data.type === 'ACTION_POSTING_DECISION') {
@@ -1199,6 +1213,8 @@
         } else if (data.type === 'GAME_START' || data.type === 'GAME_STATE_UPDATE') {
             syncGameState(data.state);
             document.getElementById('start-modal').style.display = 'none';
+        } else if (data.type === 'CHAT_MSG') {
+            addChat(data.msg, false);
         } else if (data.type === 'LOG_MSG') {
             log(data.msg, false);
         } else if (data.type === 'DIRECT_TRADE_PROPOSAL') {
@@ -1289,6 +1305,7 @@
         });
 
         foreignDraftOrder = [...KBO_TEAMS].sort(() => Math.random() - 0.5);
+        marketPassedMap = { foreign: {}, fa: {} }; marketTurnIdx = { foreign: 0, fa: 0 };
 
         KBO_TEAMS.forEach(team => {
             let roster = [];
@@ -1371,7 +1388,7 @@
         
         syncGameState(statePayload);
         setPipAlert("게임 개막 완료! 단장 멀티v1 가동 중");
-        log(`<b>${currentYear} 단장 멀티v1이 개막했습니다! (C/C+급 재계약 요구연봉 2~3억 원 미세 조정 완료)</b>`);
+        log(`<b>${currentYear} 단장 멀티v1이 개막했습니다!</b>`);
     }
 
     function getFullGameStatePayload() {
@@ -1383,7 +1400,7 @@
             allTeamRosters, marketPool, marketPreviewSummary, draftPool,
             resignCandidatesMap, tradeProposalsMap, faSignedCountMap,
             foreignSignedCountMap, draftPicksCountMap, draftPassedMap,
-            foreignDraftOrder, standings, seasonHistory, playersInRoom, psData
+            foreignDraftOrder, marketPassedMap, marketTurnIdx, standings, seasonHistory, playersInRoom, psData
         };
     }
 
@@ -1421,6 +1438,8 @@
         draftPicksCountMap = state.draftPicksCountMap || {};
         draftPassedMap = state.draftPassedMap || {};
         foreignDraftOrder = state.foreignDraftOrder || [];
+        marketPassedMap = state.marketPassedMap || { foreign: {}, fa: {} };
+        marketTurnIdx = state.marketTurnIdx || { foreign: 0, fa: 0 };
         standings = state.standings;
         seasonHistory = state.seasonHistory || [];
         if (state.playersInRoom) playersInRoom = state.playersInRoom;
@@ -1516,6 +1535,7 @@
             current: curr,
             potential: pot,
             peakCurrent: curr, 
+            startCurrent: curr, warSeason: 0, warCareer: 0,
             salary: sal,
             contractYears: cYears,
             tier: 2,
@@ -1535,6 +1555,37 @@
             teamHistory: initialTeamHistory, 
             championships: [] 
         };
+    }
+
+    function bioExtraHTML(p) {
+        const start = (p.startCurrent != null) ? p.startCurrent : ((p.growthHistory && p.growthHistory[0]) ? p.growthHistory[0].oldCurr : p.current);
+        const d = p.current - start;
+        const dTxt = d > 0 ? `<span style="color:var(--accent-green);">▲ +${d}</span>` : (d < 0 ? `<span style="color:var(--accent-red);">▼ ${d}</span>` : '변화 없음');
+        const mine = (allTeamRosters[myTeamName] || []).some(x => x.id === p.id);
+        const rename = mine ? `<div class="bio-card-section"><div class="bio-card-title"><span>✏️ 이름 변경</span></div>
+            <div style="display:flex; gap:4px; margin-top:4px;"><input id="bio-rename-input" maxlength="12" value="${String(p.name).replace(/"/g, '&quot;')}" style="flex:1; padding:4px 6px; border:1px solid var(--border-color); border-radius:4px;">
+            <button class="btn btn-info" onclick="renamePlayer('${p.id}')">변경</button></div></div>` : '';
+        return `${rename}
+            <div class="bio-card-section">
+                <div class="bio-card-title"><span>📊 팀 기여도 (WAR)</span></div>
+                <div style="font-size:0.82rem; margin-top:4px;">이번 시즌 <b>${(p.warSeason || 0).toFixed(1)}</b> | 누적 <b>${(p.warCareer || 0).toFixed(1)}</b></div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">1군 슬롯 비중과 기량(대체선수 D+ 기준)으로 분기마다 계산됩니다.</div>
+            </div>
+            <div class="bio-card-section">
+                <div class="bio-card-title"><span>📈 누적 성장도</span><span style="font-weight:bold;">${dTxt}</span></div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">입단 시 ${valToGrade(start)} ➔ 현재 ${valToGrade(p.current)}</div>
+            </div>`;
+    }
+
+    function renamePlayer(id) {
+        const nm = (document.getElementById('bio-rename-input').value || '').trim().slice(0, 12);
+        if (!nm) { alert('이름을 입력하세요.'); return; }
+        const p = getMyRoster().find(x => x.id === id);
+        if (!p) return;
+        p.name = nm;
+        if (isHost) broadcastGameState();
+        else if (hostConn) hostConn.send({ type: 'ACTION_ROSTER_UPDATE', teamName: myTeamName, roster: getMyRoster() });
+        openPlayerBioModal(id);
     }
 
     function openPlayerBioModal(playerId) {
@@ -1592,6 +1643,7 @@
                 </div>
             </div>
 
+            ${bioExtraHTML(player)}
             <div class="bio-card-section">
                 <div class="bio-card-title">
                     <span>👑 통산 우승 경력</span>
@@ -2047,6 +2099,9 @@
         const list = document.getElementById('market-list');
         list.innerHTML = '';
         const pool = marketPool[currentMarketType] || [];
+        const turnTeam = getMarketTurnTeam(currentMarketType);
+        const isMyMarketTurn = (turnTeam === myTeamName);
+        renderMarketOrderBanner(turnTeam);
         pool.forEach(p => {
             const badgesHTML = getPlayerBadgesHTML(p);
             list.innerHTML += `
@@ -2058,15 +2113,71 @@
                     <td>${getGradeBadgeHTML(p.potential)}</td>
                     <td><b style="color:var(--accent-red);">${p.salary}억 원</b></td>
                     <td>${p.contractYears}년</td>
-                    <td><button class="btn btn-info" onclick="signPlayer('${p.id}')">영입</button></td>
+                    <td><button class="btn btn-info" ${isMyMarketTurn ? '' : 'disabled'} onclick="signPlayer('${p.id}')">${isMyMarketTurn ? '영입' : '[' + (turnTeam || '종료') + '] 턴'}</button></td>
                 </tr>
             `;
         });
     }
 
+    function marketHumanOrder() {
+        const hs = playersInRoom.map(p => p.teamName);
+        const base = foreignDraftOrder.length ? foreignDraftOrder : KBO_TEAMS;
+        return base.filter(t => hs.includes(t));
+    }
+    function marketTeamDone(type, t) {
+        if (marketPassedMap[type] && marketPassedMap[type][t]) return true;
+        if (type === 'fa') return (faSignedCountMap[t] || 0) >= 3;
+        return (allTeamRosters[t] || []).filter(p => p.isForeign).length >= 2;
+    }
+    function getMarketTurnTeam(type) {
+        const o = marketHumanOrder();
+        if (!o.length || !(marketPool[type] || []).length) return null;
+        const start = marketTurnIdx[type] || 0;
+        for (let k = 0; k < o.length; k++) {
+            const t = o[(start + k) % o.length];
+            if (!marketTeamDone(type, t)) return t;
+        }
+        return null;
+    }
+    function advanceMarketTurn(type, team) {
+        const o = marketHumanOrder();
+        const i = o.indexOf(team);
+        marketTurnIdx[type] = i < 0 ? 0 : (i + 1) % o.length;
+    }
+    function processMarketPass(teamName, type) {
+        if (getMarketTurnTeam(type) !== teamName) return;
+        if (!marketPassedMap[type]) marketPassedMap[type] = {};
+        marketPassedMap[type][teamName] = true;
+        advanceMarketTurn(type, teamName);
+        log(`✋ <b>[영입 포기]</b> [${teamName}] 구단이 ${type === 'fa' ? 'FA' : '외국인'} 영입을 포기했습니다.`);
+    }
+    function passMarket() {
+        const type = currentMarketType;
+        if (getMarketTurnTeam(type) !== myTeamName) { alert('지금은 내 영입 순서가 아닙니다.'); return; }
+        if (!confirm('이번 시즌 이 시장의 영입을 포기하시겠습니까? (다시 영입할 수 없습니다)')) return;
+        if (isHost) { processMarketPass(myTeamName, type); broadcastGameState(); }
+        else hostConn.send({ type: 'ACTION_MARKET_PASS', teamName: myTeamName, marketType: type });
+    }
+    function renderMarketOrderBanner(turnTeam) {
+        const el = document.getElementById('foreign-order-text');
+        if (!el) return;
+        const type = currentMarketType;
+        const o = marketHumanOrder();
+        el.innerHTML = (o.map((t, i) => {
+            const done = marketTeamDone(type, t);
+            const mine = t === myTeamName;
+            const st = (marketPassedMap[type] && marketPassedMap[type][t]) ? '<b style="color:#ef4444;">[포기]</b>' : (done ? '<b style="color:#64748b;">[완료]</b>' : '');
+            const style = t === turnTeam ? 'color:var(--accent-red); font-weight:800; border:1px solid #ef4444; padding:2px 6px; border-radius:4px; background:#fff0f0;' : (mine ? 'color:var(--accent-blue); font-weight:bold;' : '');
+            return `<span style="${style}">${i + 1}순 ${t} ${st}${t === turnTeam ? ' 👈 (현재 턴)' : ''}</span>`;
+        }).join(' ➔ ')) || '참가 유저 없음';
+        const btn = document.getElementById('market-pass-btn');
+        if (btn) btn.disabled = (turnTeam !== myTeamName);
+    }
+
     function processMarketSign(teamName, marketType, playerId) {
         let pool = marketPool[marketType];
         if (!pool) return;
+        if (getMarketTurnTeam(marketType) !== teamName) return;
         let player = pool.find(p => p.id === playerId);
         if (!player) return;
 
@@ -2087,6 +2198,7 @@
         if (!allTeamRosters[teamName]) allTeamRosters[teamName] = [];
         allTeamRosters[teamName].push(player);
         marketPool[marketType] = pool.filter(p => p.id !== playerId);
+        advanceMarketTurn(marketType, teamName);
     }
 
     function signPlayer(id) {
@@ -2095,6 +2207,11 @@
         if (!player) return;
 
         let myRoster = getMyRoster();
+
+        if (getMarketTurnTeam(currentMarketType) !== myTeamName) {
+            alert(`[영입 불가] 현재는 [${getMarketTurnTeam(currentMarketType) || '영입 종료'}] 구단의 영입 순서입니다.`);
+            return;
+        }
 
         if (currentMarketType === 'fa') {
             let faCount = faSignedCountMap[myTeamName] || 0;
@@ -2254,6 +2371,17 @@
         });
     }
 
+    function tradeTierCountHTML(t) {
+        const r = getMyRoster();
+        const need = { '선발': 6, '불펜': 7, '포수': 2, '내야수': 6, '외야수': 6 };
+        const c = pos => r.filter(p => p.tier === 1 && p.position === pos).length;
+        const mine = r.find(p => p.id === t.myPlayer.id);
+        const gp = t.myPlayer.position, rp = t.offerPlayer.position;
+        const gNow = c(gp), gAfter = gNow - ((mine && mine.tier === 1) ? 1 : 0);
+        const rNow = c(rp);
+        return `📤 내줄 ${gp}: 1군 <b>${gNow}명</b> ➔ <b>${gAfter}명</b> (필요 ${need[gp]})<br>📥 받을 ${rp}: 1군 <b>${rNow}명</b> (필요 ${need[rp]}, 영입 시 2군 배정)`;
+    }
+
     function renderTradeBlock() {
         const container = document.getElementById('trade-block-container');
         container.innerHTML = '';
@@ -2307,6 +2435,7 @@
                         </div>
                         <div style="display:flex; flex-direction:column; justify-content:center; align-items:flex-end; gap:6px; min-width:140px;">
                             <small style="color:var(--accent-green); font-weight:bold;">${diffText}</small>
+                            <small style="color:#334155; font-size:0.72rem; text-align:right; line-height:1.4;">${tradeTierCountHTML(t)}</small>
                             <button class="btn btn-success" style="width:100%;" onclick="acceptTrade('${t.id}')">수락</button>
                             <button class="btn btn-danger" style="width:100%;" onclick="declineTrade('${t.id}')">거절</button>
                         </div>
@@ -2818,6 +2947,25 @@
         });
     }
 
+    function accrueWar() {
+        const posW = { '선발': 0.25, '불펜': 0.15, '포수': 0.10, '내야수': 0.25, '외야수': 0.25 };
+        KBO_TEAMS.forEach(team => {
+            const r = (allTeamRosters[team] || []).filter(p => p.tier === 1);
+            POSITIONS.forEach(pos => {
+                const list = r.filter(p => p.position === pos).sort((a, b) => b.current - a.current);
+                const ws = [];
+                POS_SLOTS[pos].forEach(s => { for (let k = 0; k < s.count; k++) ws.push(s.weight); });
+                const tot = ws.reduce((a, b) => a + b, 0);
+                list.forEach((p, i) => {
+                    const share = i < ws.length ? ws[i] / tot : 0;
+                    const w = Math.max(-0.3, (p.current - 4) * share * posW[pos] * 4.5);
+                    p.warSeason = Math.round(((p.warSeason || 0) + w) * 10) / 10;
+                    p.warCareer = Math.round(((p.warCareer || 0) + w) * 10) / 10;
+                });
+            });
+        });
+    }
+
     function simulateQuarter(qNum) {
         if (!isHost) {
             alert("시즌 진행 조작은 Host(방장)만 수행할 수 있습니다.");
@@ -2827,6 +2975,7 @@
         playChimeSound();
         resetAllReadies();
         processQuarterlyGrowth(qNum);
+        accrueWar();
 
         standings.forEach(t => {
             let r = allTeamRosters[t.name] || [];
@@ -3456,7 +3605,7 @@
         KBO_TEAMS.forEach(team => {
             if (allTeamRosters[team]) {
                 allTeamRosters[team] = allTeamRosters[team].filter(p => p.contractYears > 0);
-                allTeamRosters[team].forEach(p => { p.seasonStartCurrent = p.current; });
+                allTeamRosters[team].forEach(p => { p.seasonStartCurrent = p.current; p.warSeason = 0; });
             }
         });
 
@@ -3470,6 +3619,7 @@
         });
 
         foreignDraftOrder = [...KBO_TEAMS].sort(() => Math.random() - 0.5);
+        marketPassedMap = { foreign: {}, fa: {} }; marketTurnIdx = { foreign: 0, fa: 0 };
 
         generateMarketPool();
         resetStandings();
@@ -3735,7 +3885,7 @@
         });
     }
 
-    function renderPipGrowthList() {
+    function renderPipGrowthList() { return;
         const teamSelect = document.getElementById('pip-growth-team-select');
         const filterSelect = document.getElementById('pip-growth-filter-select');
         const container = document.getElementById('pip-growth-container');
@@ -3862,15 +4012,10 @@
         const tier1Count = myRoster.filter(p => p.tier === 1).length;
         document.getElementById('tier1-count').innerText = tier1Count;
 
-        const pw = calculateTeamPowerBreakdown(myRoster);
-        document.getElementById('overall-power-grade').innerHTML = getGradeBadgeHTML(pw.overallGrade);
-        document.getElementById('pw-starter').innerHTML = getGradeBadgeHTML(pw.starterGrade);
-        document.getElementById('pw-reliever').innerHTML = getGradeBadgeHTML(pw.relieverGrade);
-        document.getElementById('pw-catcher').innerHTML = getGradeBadgeHTML(pw.catcherGrade);
-        document.getElementById('pw-infield').innerHTML = getGradeBadgeHTML(pw.infieldGrade);
-        document.getElementById('pw-outfield').innerHTML = getGradeBadgeHTML(pw.outfieldGrade);
+        updatePowerBanner(myRoster);
 
         updateSeasonStepBanner();
+        updateAdvanceBtn();
 
         renderRoster();
         renderMarket();
@@ -3944,37 +4089,132 @@
         const targetTab = document.getElementById(tabId);
         if (targetTab) targetTab.classList.add('active');
 
-        if (event && event.target && event.target.tagName === 'BUTTON') {
+        if (event && event.target && event.target.tagName === 'BUTTON' && event.target.closest('nav')) {
             event.target.classList.add('active');
         }
 
+        if (!document.querySelector('nav .nav-btn.active')) {
+            const nb = [...document.querySelectorAll('nav .nav-btn')].find(b => (b.getAttribute('onclick') || '').includes(`'${tabId}'`));
+            if (nb) nb.classList.add('active');
+        }
         if (tabId === 'userTrade') initDirectTradeUI();
     }
 
-    async function generateSaveCode() {
-        const fullData = getFullGameStatePayload();
-        const jsonStr = JSON.stringify(fullData);
-        const compressedBase64 = await compressSaveData(jsonStr);
-        document.getElementById('export-code-area').value = compressedBase64;
-        alert("Deflate 초압축 세이브 코드가 생성되었습니다!");
+    function escHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function addChat(msg, relay) {
+        chatLog.push(msg);
+        if (chatLog.length > 100) chatLog.shift();
+        const box = document.getElementById('pip-chat-log');
+        if (box) {
+            box.innerHTML += `<div><b>${escHTML(msg.name)}</b>: ${escHTML(msg.text)}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+        if (relay && isHost) guestConns.forEach(c => c.send({ type: 'CHAT_MSG', msg }));
+    }
+    function sendChat() {
+        const inp = document.getElementById('pip-chat-input');
+        const text = inp.value.trim();
+        if (!text) return;
+        const me = playersInRoom.find(p => p.peerId === myPeerId);
+        const msg = { name: `${me ? me.name : myGMName}(${myTeamName})`, text };
+        inp.value = '';
+        if (isHost) addChat(msg, true);
+        else if (hostConn) hostConn.send({ type: 'CHAT_SEND', msg });
     }
 
-    async function loadSaveCode() {
-        const code = document.getElementById('import-code-area').value.trim();
-        if (!code) { alert("세이브 코드를 입력해주세요."); return; }
+    const HELP_TEXT = {
+        roster: ['선수단 관리 도움말', ['1군은 28명입니다. 포지션별 필요 인원(주전+후보+예비): 선발 6, 불펜 7, 포수 2, 내야수 6, 외야수 6.', '[자동 1군 필수 엔트리 구성]을 쓰면 위 인원이 자동으로 채워집니다.', '자동 라인업을 쓰더라도 유망주는 2군에서 키우는 것이 장기적으로 유리합니다. 24세 미만 2군 선수는 🛡️보존중이며, 19~24세에 성장 확률이 가장 높습니다.', '선수 이름을 더블클릭하면 약력(WAR, 누적 성장도, 이름 변경)을 볼 수 있습니다.', '팀 능력치는 1군 선수만 반영되며, 포지션별 상위 순서대로 가중 평균합니다.']],
+        market: ['영입 도움말', ['FA 선수는 자동으로 생성되는 시장 선수입니다. 한 시즌에 최대 3명까지 영입할 수 있고, 첫 계약 기간에는 트레이드할 수 없습니다.', '외국인은 구단당 최대 2명, 계약은 1년이며 매년 1년 단위로 재계약할 수 있습니다.', '영입 순서는 랜덤이며, 내 턴에 한 명을 영입하면 다음 사람에게 턴이 넘어갑니다. [영입 포기]를 누르면 이번 시즌 이 시장에서는 더 이상 영입하지 않습니다.', 'AI 구단은 영입에 참여하지 않고 자동으로 패스합니다.', '연봉 합계가 실효 샐러리캡의 130%를 넘으면 영입할 수 없습니다.']],
+        trade: ['AI 트레이드 도움말', ['분기 종료(36G, 72G, 108G)마다 AI 구단의 제안 카드가 생성됩니다.', '카드의 파란 글씨에서 내줄 선수와 받을 선수 포지션의 현재 1군 인원수를 확인하세요. 트레이드로 받은 선수는 2군으로 배정됩니다.', '용병, FA, 트레이드 불가 선수는 대상이 아닙니다.']],
+        userTrade: ['유저 트레이드 도움말', ['인간 단장끼리만 가능하며, 2분기 종료(72G) 직후 1회 제안할 수 있습니다.', '도착한 제안은 이 탭에서 수락/거절합니다.']],
+        offseason: ['오프시즌 도움말', ['만료 선수는 1년 계약 또는 장기 계약/방출 중 선택합니다. 33세 이상은 최대 2년, 용병은 1년 계약만 가능합니다.', '신인 드래프트는 참가 유저끼리만 진행되며 최대 5명입니다.', '해외 포스팅 요청이 오면 수락/거절을 선택할 수 있습니다.']],
+        season: ['시즌 진행 도움말', ['단계 순서: 1~4분기 ➔ 포스트시즌 ➔ 오프시즌 ➔ 다음 시즌 개막. 상단 배너의 ▶ 버튼으로도 다음 단계를 진행할 수 있습니다.', '시즌 진행은 방장만 할 수 있습니다.', '팀 전력이 높을수록 승률이 올라갑니다.']],
+        history: ['역사 도움말', ['시즌별 순위, 우승/준우승 기록과 구단별 평균 순위를 볼 수 있습니다.']],
+        saveload: ['저장 도움말', ['[파일로 저장하기]로 .json 파일을 내려받고, 불러오기에서 그 파일을 선택하면 이어서 할 수 있습니다.']]
+    };
+    function showHelp(id) {
+        const h = HELP_TEXT[id]; if (!h) return;
+        document.getElementById('help-title').innerText = '❓ ' + h[0];
+        document.getElementById('help-body').innerHTML = '<ul>' + h[1].map(s => `<li>${s}</li>`).join('') + '</ul>';
+        document.getElementById('help-modal').style.display = 'flex';
+    }
+    function closeHelp() { document.getElementById('help-modal').style.display = 'none'; }
+
+    function updatePowerBanner(roster) {
         try {
-            const decompressedJson = await decompressSaveData(code);
-            const loadedData = JSON.parse(decompressedJson);
-            syncGameState(loadedData);
-            document.getElementById('start-modal').style.display = 'none';
-            alert("세이브 데이터를 성공적으로 불러왔습니다!");
-        } catch(e) {
-            alert("유효하지 않거나 손상된 세이브 코드입니다.");
-        }
+            const pw = calculateTeamPowerBreakdown(roster);
+            const set = (id, html) => { const e = document.getElementById(id); if (e) e.innerHTML = html; };
+            set('overall-power-grade', getGradeBadgeHTML(pw.overallGrade));
+            set('overall-power-num', `(${pw.overallNum.toFixed(2)})`);
+            set('pw-starter', getGradeBadgeHTML(pw.starterGrade));
+            set('pw-reliever', getGradeBadgeHTML(pw.relieverGrade));
+            set('pw-catcher', getGradeBadgeHTML(pw.catcherGrade));
+            set('pw-infield', getGradeBadgeHTML(pw.infieldGrade));
+            set('pw-outfield', getGradeBadgeHTML(pw.outfieldGrade));
+            set('banner-power-line', `⚡ 팀전력 ${getGradeBadgeHTML(pw.overallGrade)} (${pw.overallNum.toFixed(2)}) · 선발 ${getGradeBadgeHTML(pw.starterGrade)} 불펜 ${getGradeBadgeHTML(pw.relieverGrade)} 포수 ${getGradeBadgeHTML(pw.catcherGrade)} 내야 ${getGradeBadgeHTML(pw.infieldGrade)} 외야 ${getGradeBadgeHTML(pw.outfieldGrade)}`);
+        } catch (e) { console.error('power banner', e); }
+    }
+
+    function getAdvanceAction() {
+        const m = {
+            'Q1_READY': ['▶ 1분기 진행', () => simulateQuarter(1)],
+            'TRADE_1': ['▶ 2분기 진행', () => simulateQuarter(2)],
+            'TRADE_2': ['▶ 3분기 진행', () => simulateQuarter(3)],
+            'TRADE_3': ['▶ 4분기 진행', () => simulateQuarter(4)],
+            'PS_READY': ['🏆 포스트시즌 진행', () => advancePostseason()],
+            'PS_IN_PROGRESS': ['🏆 포스트시즌 진행', () => advancePostseason()],
+            'OFFSEASON_READY': ['▶ 오프시즌 진입', () => prepareOffseason()],
+            'NEW_SEASON_READY': ['▶ 다음 시즌 개막', () => startNextSeason()]
+        };
+        return m[phase];
+    }
+    function advanceFromBanner() {
+        const a = getAdvanceAction();
+        if (!a) return;
+        if (!isHost) { alert('시즌 진행은 방장만 할 수 있습니다.'); return; }
+        a[1]();
+    }
+    function updateAdvanceBtn() {
+        const b = document.getElementById('banner-advance-btn');
+        if (!b) return;
+        const a = getAdvanceAction();
+        b.style.display = a ? '' : 'none';
+        if (a) { b.innerText = isHost ? a[0] : '⏳ 방장 진행 대기'; b.disabled = !isHost; }
+    }
+
+    function saveGameFile() {
+        const blob = new Blob([JSON.stringify(getFullGameStatePayload())], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `단장_${currentYear}_${myTeamName}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    function loadGameFile(input) {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        if (!isHost) { alert('멀티 플레이에서는 방장만 불러올 수 있습니다.'); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                if (!data.allTeamRosters) throw new Error('bad');
+                syncGameState(data);
+                document.getElementById('start-modal').style.display = 'none';
+                broadcastGameState();
+                alert('저장 파일을 불러왔습니다!');
+            } catch (e) { alert('유효하지 않거나 손상된 저장 파일입니다.'); }
+            input.value = '';
+        };
+        reader.readAsText(f);
     }
 
     window.onload = function() {
         salaryCap = TEAM_MARKET_SIZES[myTeamName].baseCap;
+        Object.keys(HELP_TEXT).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.insertAdjacentHTML('afterbegin', `<button class="help-btn" title="도움말" onclick="showHelp('${id}')">?</button>`);
+        });
     };
 </script>
 </body>
